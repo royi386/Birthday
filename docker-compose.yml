@@ -1,0 +1,37 @@
+﻿services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:5175:5175"
+      - "${LAN_BIND_ADDRESS:-0.0.0.0}:5175:5175"
+    volumes:
+      - odds-data:/data
+      - odds-media:/media
+      - odds-static:/app/staticfiles
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5175/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+  backup:
+    profiles: ["backup"]
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      web:
+        condition: service_healthy
+    entrypoint: ["python", "manage.py"]
+    command: ["backup_data", "--output=/backups", "--loop"]
+    volumes:
+      - odds-data:/data:ro
+      - odds-media:/media:ro
+      - odds-backups:/backups
+volumes:
+  odds-data:
+  odds-media:
+  odds-static:
+  odds-backups:

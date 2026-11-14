@@ -1,0 +1,8 @@
+.env
+Credential.txt
+*.sqlite3
+__pycache__/
+*.py[cod]
+media/
+staticfiles/
+.venv/

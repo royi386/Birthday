@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput
+exec gunicorn odds.wsgi:application --bind 0.0.0.0:5175 --workers 2 --access-logfile - --error-logfile -
