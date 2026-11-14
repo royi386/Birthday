@@ -1,4 +1,4 @@
-﻿# Office Digital Display System (ODDS)
+# Office Digital Display System (ODDS)
 
 ODDS is a Django-based employee portal and digital-signage scheduler. It manages birthdays, work anniversaries, employee recognition, office announcements, safety messages and general information, and locomotive population, then rotates eligible slides on public TV routes. Admin routes require authentication and model permissions; display routes are read-only.
 
@@ -28,14 +28,14 @@ Open `http://127.0.0.1:5175/`. The shared TV route is `http://127.0.0.1:5175/dis
 
 ## Docker deployment
 
+The GitHub Actions workflow publishes `ghcr.io/royi386/birthday:latest` after each push to `master`. The server needs only `docker-compose.yml` and Docker Compose; it does not need the application source tree or an `.env` file. Deploy the newest image with:
+
 ```sh
-cp .env.example .env
-# Replace DJANGO_SECRET_KEY and set DJANGO_ALLOWED_HOSTS to your internal host/IP.
-docker compose up -d --build
-docker compose exec web python manage.py createsuperuser
+docker compose pull
+docker compose up -d
 ```
 
-The app listens on container and host port **5175**. For LAN access, set `LAN_BIND_ADDRESS` to the server private IPv4 address and include that IP in `DJANGO_ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` as `http://IP:5175`. Open `http://IP:5175/` from another PC on the same LAN. Startup applies migrations and collects static files. The service restarts unless stopped, and `/health/` is the Compose health check. Database and media use `odds-data` and `odds-media` named volumes. The container is intended for the internal office network; do not publish port 5175 directly to the public internet. Use a TLS reverse proxy if clients need HTTPS, which also enables service workers on the TV browser.
+The app listens on port **5175** on all host interfaces. Open `http://SERVER:5175/` from another PC on the same LAN. Startup applies migrations and collects static files. The service restarts unless stopped, and `/health/` is the Compose health check. Database and media use persistent named volumes. Django generates its secret key on first startup and stores it in the data volume. Keep this deployment on the trusted office LAN; do not expose port 5175 to the public internet. If the GHCR package is private, authenticate once on the server with `docker login ghcr.io` before pulling.
 
 ### PostgreSQL option
 
@@ -115,7 +115,8 @@ Configure OS auto-login, startup launch, sleep/screen-saver settings and BIOS AC
 Staff can download a database-fixture plus media ZIP from **System settings**. It is ZIP-integrity checked before delivery. Automated daily backups are available through the Compose `backup` profile; set `BACKUP_INTERVAL_SECONDS` to change the default 86400-second interval:
 
 ```sh
-docker compose --profile backup up -d --build
+docker compose --profile backup pull
+docker compose --profile backup up -d
 docker compose logs -f backup
 ```
 

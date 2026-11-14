@@ -1,18 +1,34 @@
-﻿import os
+import os
+import secrets
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
-Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "db.sqlite3"))).parent.mkdir(parents=True, exist_ok=True)
+DATA_DIR = Path(os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "db.sqlite3"))).parent
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = "local-development-key-only-do-not-deploy"
     else:
-        raise ImproperlyConfigured("Set DJANGO_SECRET_KEY before running with DJANGO_DEBUG=False.")
+        # Persist the generated production key in the data volume; deployment needs no .env file.
+        secret_file = DATA_DIR / ".django_secret_key"
+        try:
+            SECRET_KEY = secret_file.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            generated_key = secrets.token_urlsafe(64)
+            try:
+                fd = os.open(secret_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as secret_stream:
+                    secret_stream.write(generated_key)
+                SECRET_KEY = generated_key
+            except FileExistsError:
+                SECRET_KEY = secret_file.read_text(encoding="utf-8").strip()
+        if not SECRET_KEY:
+            raise ImproperlyConfigured(f"Could not load or create Django secret key at {secret_file}.")
 if SECRET_KEY.startswith("replace-with-"):
     raise ImproperlyConfigured("Replace the example DJANGO_SECRET_KEY with a unique random secret.")
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [h.strip() for h in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if h.strip()]
 INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "employees", "signage"]
 MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware", "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware"]

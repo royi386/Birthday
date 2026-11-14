@@ -1,11 +1,15 @@
-﻿services:
+services:
   web:
-    build: .
+    image: ghcr.io/royi386/birthday:latest
+    pull_policy: always
     restart: unless-stopped
-    env_file: .env
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DATABASE_PATH: /data/db.sqlite3
+      MEDIA_ROOT: /media
     ports:
-      - "127.0.0.1:5175:5175"
-      - "${LAN_BIND_ADDRESS:-0.0.0.0}:5175:5175"
+      - "5175:5175"
     volumes:
       - odds-data:/data
       - odds-media:/media
@@ -18,9 +22,14 @@
       start_period: 30s
   backup:
     profiles: ["backup"]
-    build: .
+    image: ghcr.io/royi386/birthday:latest
+    pull_policy: always
     restart: unless-stopped
-    env_file: .env
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DATABASE_PATH: /data/db.sqlite3
+      MEDIA_ROOT: /media
     depends_on:
       web:
         condition: service_healthy
