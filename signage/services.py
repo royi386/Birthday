@@ -82,7 +82,9 @@ def build_display_items(config=None, device=None, category_filter=None):
         qs = Recognition.objects.filter(is_active=True, starts_on__lte=today, ends_on__gte=today).filter(Q(employee__isnull=True) | Q(employee__is_active=True)).select_related("employee").order_by("-priority", "starts_on", "pk")
         for item in _is_configured_for(qs, "configurations", config):
             employee = item.employee
-            buckets["recognition"].append(_base_item("recognition", item.title, item.message, _image(item.photo) or (_image(employee.photo) if employee else ""), schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None))
+            employee_image = _image(employee.photo) if employee else ""
+            work_image = _image(item.photo)
+            buckets["recognition"].append(_base_item("recognition", item.title, item.message, employee_image or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=employee_image, work_image=work_image))
 
     if "announcement" in buckets:
         qs = Announcement.objects.filter(is_active=True, starts_at__lte=now, ends_at__gt=now).order_by("-priority", "starts_at", "pk")

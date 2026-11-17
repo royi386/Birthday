@@ -29,6 +29,10 @@
 .slide-recognition .kicker{color:#b8d8bc}
 .slide-recognition .message h1{font-size:clamp(48px,6vw,100px);color:#fff0c9}
 .slide-recognition .wish{max-width:34ch;padding-left:20px;border-left:3px solid #d8b660;color:#e1eadc}
+.recognition-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,1.6vw,26px);width:min(42vw,72vh);flex:none;align-items:center}
+.recognition-photo{margin:0;min-width:0;overflow:hidden;border:1px solid #d8c27f99;border-radius:20px;background:linear-gradient(140deg,#436b5c,#1b3939);box-shadow:0 0 0 7px #d8c27f12,0 22px 60px #0007}
+.recognition-photo img,.recognition-placeholder{display:grid;width:100%;height:min(29vw,48vh);object-fit:cover;place-items:center;color:#f5d99b;font:800 clamp(42px,7vw,100px) Manrope,sans-serif;background:linear-gradient(140deg,#436b5c,#1b3939)}
+.recognition-photo figcaption{padding:10px 12px;text-align:center;color:#f0d991;font-size:clamp(11px,.95vw,15px);font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .slide-announcement,.slide-safety{padding-left:5vw;padding-right:5vw}
 .slide-announcement .slide-layout,.slide-safety .slide-layout{max-width:94vw;gap:4vw}
 .slide-announcement .visual,.slide-safety .visual{width:min(48vw,95vh);height:min(68vh,70vw);padding:8px;border-radius:24px;box-shadow:0 24px 90px #0009;flex:none}
@@ -43,7 +47,7 @@
 .slide-safety .occasion-label{border-color:#f0ad5f88;background:#bc642b30;color:#ffd08b}
 .slide-safety .kicker{color:#ffbd70}
 .slide-safety .message h1{font-size:clamp(42px,5.3vw,88px);color:#fff0dc}
-@media(max-aspect-ratio:1/1){.slide-birthday:before,.slide-anniversary:before{inset:2% 3% 13%;border-radius:24px}.slide-recognition:before{inset:3% 3% 13%}.slide-recognition .visual{width:min(40vw,26vh);height:min(40vw,26vh)}.slide-announcement,.slide-safety{padding:3vh 6vw 16vh}.slide-announcement .slide-layout,.slide-safety .slide-layout{gap:2vh}.slide-announcement .visual,.slide-safety .visual{width:min(82vw,54vh);height:min(39vh,82vw);padding:5px}.slide-announcement .message,.slide-safety .message{max-width:86vw}.slide-announcement .message h1,.slide-safety .message h1{font-size:clamp(34px,7vw,58px)}}
+@media(max-aspect-ratio:1/1){.slide-birthday:before,.slide-anniversary:before{inset:2% 3% 13%;border-radius:24px}.slide-recognition:before{inset:3% 3% 13%}.slide-recognition .visual{width:min(40vw,26vh);height:min(40vw,26vh)}.recognition-gallery{width:min(82vw,54vh);gap:10px}.recognition-photo{border-radius:14px}.recognition-photo img,.recognition-placeholder{height:min(23vh,38vw)}.recognition-photo figcaption{padding:7px 4px;font-size:10px}.slide-announcement,.slide-safety{padding:3vh 6vw 16vh}.slide-announcement .slide-layout,.slide-safety .slide-layout{gap:2vh}.slide-announcement .visual,.slide-safety .visual{width:min(82vw,54vh);height:min(39vh,82vw);padding:5px}.slide-announcement .message,.slide-safety .message{max-width:86vw}.slide-announcement .message h1,.slide-safety .message h1{font-size:clamp(34px,7vw,58px)}}
 /* Celebration artwork and per-employee color/layout variations. */
 .slide.celebration-variant-1{--party-bg-a:#4b254b;--party-bg-b:#24203f;--party-accent:#ffb0bc;--party-confetti-a:#ffcf6b;--party-confetti-b:#78d7e5;--party-confetti-c:#f488b8;--party-confetti-d:#d5adff}
 .slide.celebration-variant-2{--party-bg-a:#174d67;--party-bg-b:#202a55;--party-accent:#70d6d3;--party-confetti-a:#ffe071;--party-confetti-b:#f49e66;--party-confetti-c:#88e1be;--party-confetti-d:#b9a1ff}

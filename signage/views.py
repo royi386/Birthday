@@ -63,9 +63,15 @@ def content_list(request, section):
     definition = _section(section)
     if not request.user.has_perm(f"signage.view_{definition['perm']}"): raise PermissionDenied
     qs = definition["model"].objects.all().order_by("-is_active", "-priority", "pk")
+    if section == "recognition": qs = qs.select_related("employee").prefetch_related("configurations")
     q = request.GET.get("q", "").strip()
     if q: qs = qs.filter(title__icontains=q)
     page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    if section == "recognition":
+        for item in page:
+            item.employee_photo = item.employee.photo if item.employee_id and item.employee.photo else None
+            item.work_photo = item.photo if item.photo else None
+            item.display_targets = list(item.configurations.all())
     return render(request, "signage/content_list.html", {"section": section, "definition": definition, "page": page, "q": q, "add_url": reverse("content_add", kwargs={"section": section})})
 
 @login_required
