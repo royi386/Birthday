@@ -1,12 +1,17 @@
 from django import forms
 from django.utils import timezone
-from PIL import Image, UnidentifiedImageError
 from .models import DisplayConfiguration, Employee
+
+MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024
+
 class EmployeeForm(forms.ModelForm):
     class Meta:
         model = Employee
         fields = ["employee_id", "name", "designation", "section", "date_of_birth", "photo", "date_of_joining", "is_active"]
         widgets = {"date_of_birth": forms.DateInput(attrs={"type": "date"}), "date_of_joining": forms.DateInput(attrs={"type": "date"})}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["photo"].help_text = "JPEG, PNG or WebP image, up to 10 MB."
     def clean_employee_id(self): return self.cleaned_data["employee_id"].strip()
 
     def clean_date_of_birth(self):
@@ -25,16 +30,7 @@ class EmployeeForm(forms.ModelForm):
         photo = self.cleaned_data.get("photo")
         if not photo:
             return photo
-        if photo.size > 5 * 1024 * 1024:
-            raise forms.ValidationError("Photo must be 5 MB or smaller.")
-        try:
-            image = Image.open(photo)
-            if image.format not in ("JPEG", "PNG", "WEBP"):
-                raise forms.ValidationError("Use a JPEG, PNG or WebP image.")
-            image.verify()
-        except (UnidentifiedImageError, OSError):
-            raise forms.ValidationError("The uploaded file is not a valid image.")
-        photo.seek(0)
+        validate_image_upload(photo, label="Photo")
         return photo
 
 class DisplayConfigurationForm(forms.ModelForm):
@@ -67,14 +63,15 @@ class DisplayConfigurationForm(forms.ModelForm):
                 except forms.ValidationError as exc: self.add_error(field_name, exc)
         return cleaned
 
-def validate_image_upload(uploaded):
+def validate_image_upload(uploaded, label="Image"):
     from PIL import Image, UnidentifiedImageError
-    if uploaded.size > 5 * 1024 * 1024:
-        raise forms.ValidationError("Image must be 5 MB or smaller.")
+    if uploaded.size > MAX_IMAGE_UPLOAD_SIZE:
+        raise forms.ValidationError(f"{label} must be 10 MB or smaller.")
     try:
         image = Image.open(uploaded)
-        if image.format not in ("JPEG", "PNG", "WEBP"):
-            raise forms.ValidationError("Use a JPEG, PNG or WebP image.")
+        image_format = image.format
+        if image_format not in ("JPEG", "MPO", "PNG", "WEBP"):
+            raise forms.ValidationError(f"Unsupported image format ({image_format or 'unknown'}). Use a JPEG, PNG or WebP image.")
         image.verify()
     except (UnidentifiedImageError, OSError):
         raise forms.ValidationError("The uploaded file is not a valid image.")

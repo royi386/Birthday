@@ -71,7 +71,7 @@ All write routes check permissions. Public display and JSON feed endpoints expos
 
 ## Employees and spreadsheet import
 
-The employee directory supports add/edit/deactivate, name/ID search, section filtering, pagination, photo replacement and unique employee IDs. Dates of birth and joining dates cannot be in the future. Images are checked as valid JPEG/PNG/WebP files and limited to 5 MB.
+The employee directory supports add/edit/deactivate, name/ID search, section filtering, pagination, photo replacement and unique employee IDs. Dates of birth and joining dates cannot be in the future. Images are checked by content as valid JPEG/PNG/WebP files and limited to 10 MB; MPO photos are accepted as JPEG-compatible files. Multipart requests allow extra space for form data.
 
 In **Import employees**, download the CSV or Excel template, upload `.csv` or `.xlsx`, review row validation, then confirm. Required columns are `employee_id`, `name`, `date_of_birth`; optional columns are `designation`, `section`, `date_of_joining`, `is_active`. ISO dates (`YYYY-MM-DD`) are recommended. The preview reports missing fields, duplicate IDs, invalid/future dates and existing records. Existing IDs are skipped by default; overwriting them requires selecting the update option and the user's `change_employee` permission. Invalid rows can be downloaded as a CSV error report. Photos are added on employee profiles rather than in the spreadsheet.
 
