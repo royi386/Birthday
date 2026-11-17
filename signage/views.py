@@ -1,6 +1,7 @@
-﻿import shutil
+import shutil
 import tempfile
 import calendar
+import logging
 from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -28,6 +29,8 @@ CONTENT_SECTIONS = {
     "safety": {"title": "Safety messages", "model": SafetyMessage, "form": SafetyMessageForm, "perm": "safetymessage"},
     "general": {"title": "General information", "model": GeneralMessage, "form": GeneralMessageForm, "perm": "generalmessage"},
 }
+logger = logging.getLogger(__name__)
+
 
 def audit(actor, action, target, summary):
     AuditLog.objects.create(actor=actor if getattr(actor, "is_authenticated", False) else None, action=action, target=str(target)[:180], summary=str(summary)[:500])
@@ -75,8 +78,13 @@ def content_edit(request, section, pk=None):
     form = definition["form"](request.POST or None, request.FILES or None, instance=obj)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic(): saved = form.save()
-        audit(request.user, "update" if obj else "create", saved, f"{definition['title']}: {saved}")
-        messages.success(request, f"{definition['title']} saved.")
+        try:
+            audit(request.user, "update" if obj else "create", saved, f"{definition['title']}: {saved}")
+        except Exception:
+            logger.exception("Could not write audit entry for %s", definition["title"])
+            messages.warning(request, f"{definition['title']} was saved, but its audit entry could not be recorded.")
+        else:
+            messages.success(request, f"{definition['title']} saved.")
         return redirect("content_list", section=section)
     return render(request, "signage/content_form.html", {"section": section, "definition": definition, "form": form, "obj": obj})
 
@@ -210,7 +218,7 @@ def display_feed(request, device_id=None, category_filter=None):
     return response
 
 def service_worker(request):
-    js = """const CACHE='odds-display-v5';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/']))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
+    js = """const CACHE='odds-display-v6';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/']))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
     return HttpResponse(js, content_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 
 def health(request):

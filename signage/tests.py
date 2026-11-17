@@ -116,10 +116,36 @@ class SchedulerTests(TestCase):
                 self.assertIsNone(zf.testzip())
                 self.assertIn("database.json", zf.namelist())
 
+    @patch("signage.services.office_today", return_value=date(2026, 11, 13))
+    def test_display_uses_category_specific_slide_layouts(self, _today):
+        person = Employee.objects.create(employee_id="LAYOUT1", name="Display Person", date_of_birth=date(1990, 11, 13), date_of_joining=date(2021, 11, 13))
+        Recognition.objects.create(employee=person, title="Great work", message="Thank you.", starts_on=date(2026, 11, 13), ends_on=date(2026, 11, 13))
+        now = timezone.now()
+        Announcement.objects.create(title="Notice", description="Important update", starts_at=now-timedelta(minutes=1), ends_at=now+timedelta(hours=1))
+        SafetyMessage.objects.create(title="Stay safe", message="Follow the procedure.", starts_on=date(2026, 11, 13), ends_on=date(2026, 11, 13))
+        response = self.client.get(reverse("display_birthdays"))
+        for category in ("birthday", "anniversary", "recognition", "announcement", "safety"):
+            self.assertContains(response, f"slide-{category}")
+        self.assertContains(response, "feature-visual")
+        self.assertContains(response, "milestone-badge")
+
 class SignageAdminFlowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="content-operator", password="strong-test-password")
         self.client.force_login(self.user)
+
+    @patch("signage.views.audit", side_effect=RuntimeError("audit storage unavailable"))
+    def test_recognition_save_redirects_even_if_audit_logging_fails(self, _audit):
+        self.user.user_permissions.add(Permission.objects.get(codename="add_recognition"))
+        today = timezone.localdate()
+        with self.assertLogs("signage.views", level="ERROR"):
+            response = self.client.post(reverse("content_add", args=["recognition"]), {
+                "title": "Outstanding work", "message": "Thank you for your contribution.",
+                "starts_on": today.isoformat(), "ends_on": today.isoformat(),
+                "priority": 50, "is_active": "on",
+            })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Recognition.objects.filter(title="Outstanding work").exists())
 
     def test_announcement_create_is_permission_controlled_and_audited(self):
         add = Permission.objects.get(codename="add_announcement")
