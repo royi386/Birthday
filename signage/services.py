@@ -60,7 +60,7 @@ def build_display_items(config=None, device=None, category_filter=None):
             if person.date_of_birth.month == 2 and person.date_of_birth.day == 29 and not leap_year:
                 matches = (today.month, today.day) == ((2, 28) if policy == "feb28" else (3, 1))
             if matches:
-                buckets["birthday"].append(_base_item("birthday", "Happy Birthday!", config.birthday_greeting if config else "Many many happy returns of the day!", _image(person.photo), schedules["birthday"].duration, 100, name=person.name, designation=person.designation, section=person.section, person=True))
+                buckets["birthday"].append(_base_item("birthday", "Happy Birthday!", config.birthday_greeting if config else "Many many happy returns of the day!", _image(person.photo), schedules["birthday"].duration, 100, name=person.name, designation=person.designation, section=person.section, person=True, celebration_variant=((person.pk - 1) % 4) + 1))
 
     if "anniversary" in buckets and config:
         try: milestones = {int(value.strip()) for value in config.anniversary_milestones.split(",") if value.strip()}
@@ -75,7 +75,7 @@ def build_display_items(config=None, device=None, category_filter=None):
             day = person.date_of_joining.day
             leap_shift = day == 29 and person.date_of_joining.month == 2 and today.year % 4 != 0 and (today.month, today.day) == ((2, 28) if config.leap_day_policy == "feb28" else (3, 1))
             if day == today.day or leap_shift:
-                buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", _image(person.photo), schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years))
+                buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", _image(person.photo), schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years, celebration_variant=((person.pk - 1) % 4) + 1))
 
     now = timezone.now()
     if "recognition" in buckets:

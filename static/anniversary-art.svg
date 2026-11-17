@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 280" role="img" aria-label="Service anniversary medal and laurel wreath">
+<defs><linearGradient id="medal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe9a0"/><stop offset="1" stop-color="#d59a3d"/></linearGradient><linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#66b8bd"/><stop offset="1" stop-color="#3a738f"/></linearGradient></defs>
+<g stroke-linecap="round" stroke-linejoin="round">
+<path d="M180 194 112 267l-8-48-45 17 44-98m77 56 68 73 8-48 45 17-44-98" fill="url(#ribbon)" stroke="#f8e7b3" stroke-width="4"/>
+<path d="M70 204C26 167 34 94 88 55m202 149c44-37 36-110-18-149M55 166l37-5m-42-20 40-7m-32-23 39 2m-23-30 37 10m219 73-37-5m42-20-40-7m32-23-39 2m23-30-37 10" fill="none" stroke="#8dc5a0" stroke-width="8"/>
+<circle cx="180" cy="122" r="82" fill="url(#medal)" stroke="#fff0be" stroke-width="7"/><circle cx="180" cy="122" r="66" fill="#24536a" stroke="#f8df96" stroke-width="4"/><path d="m180 75 14 29 32 5-23 22 6 32-29-15-29 15 6-32-23-22 32-5z" fill="#ffdf83" stroke="#fff1bd" stroke-width="3"/><circle cx="180" cy="122" r="10" fill="#fff5d6"/>
+<path d="m78 55 11-23m22 11 7-22m143 34 11-23m-22 11-7-22m-191 94-23-7m259 7 23-7m-215 98-17 17m182-17 17 17" fill="none" stroke="#ffd46f" stroke-width="6"/>
+</g></svg>

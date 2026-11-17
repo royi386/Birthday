@@ -119,6 +119,7 @@ class SchedulerTests(TestCase):
     @patch("signage.services.office_today", return_value=date(2026, 11, 13))
     def test_display_uses_category_specific_slide_layouts(self, _today):
         person = Employee.objects.create(employee_id="LAYOUT1", name="Display Person", date_of_birth=date(1990, 11, 13), date_of_joining=date(2021, 11, 13))
+        Employee.objects.create(employee_id="LAYOUT2", name="Second Display Person", date_of_birth=date(1992, 11, 13))
         Recognition.objects.create(employee=person, title="Great work", message="Thank you.", starts_on=date(2026, 11, 13), ends_on=date(2026, 11, 13))
         now = timezone.now()
         Announcement.objects.create(title="Notice", description="Important update", starts_at=now-timedelta(minutes=1), ends_at=now+timedelta(hours=1))
@@ -128,6 +129,8 @@ class SchedulerTests(TestCase):
             self.assertContains(response, f"slide-{category}")
         self.assertContains(response, "feature-visual")
         self.assertContains(response, "milestone-badge")
+        self.assertContains(response, "celebration-variant-1")
+        self.assertContains(response, "celebration-variant-2")
 
 class SignageAdminFlowTests(TestCase):
     def setUp(self):

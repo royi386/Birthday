@@ -44,3 +44,30 @@
 .slide-safety .kicker{color:#ffbd70}
 .slide-safety .message h1{font-size:clamp(42px,5.3vw,88px);color:#fff0dc}
 @media(max-aspect-ratio:1/1){.slide-birthday:before,.slide-anniversary:before{inset:2% 3% 13%;border-radius:24px}.slide-recognition:before{inset:3% 3% 13%}.slide-recognition .visual{width:min(40vw,26vh);height:min(40vw,26vh)}.slide-announcement,.slide-safety{padding:3vh 6vw 16vh}.slide-announcement .slide-layout,.slide-safety .slide-layout{gap:2vh}.slide-announcement .visual,.slide-safety .visual{width:min(82vw,54vh);height:min(39vh,82vw);padding:5px}.slide-announcement .message,.slide-safety .message{max-width:86vw}.slide-announcement .message h1,.slide-safety .message h1{font-size:clamp(34px,7vw,58px)}}
+/* Celebration artwork and per-employee color/layout variations. */
+.slide.celebration-variant-1{--party-bg-a:#4b254b;--party-bg-b:#24203f;--party-accent:#ffb0bc;--party-confetti-a:#ffcf6b;--party-confetti-b:#78d7e5;--party-confetti-c:#f488b8;--party-confetti-d:#d5adff}
+.slide.celebration-variant-2{--party-bg-a:#174d67;--party-bg-b:#202a55;--party-accent:#70d6d3;--party-confetti-a:#ffe071;--party-confetti-b:#f49e66;--party-confetti-c:#88e1be;--party-confetti-d:#b9a1ff}
+.slide.celebration-variant-3{--party-bg-a:#74344d;--party-bg-b:#38243f;--party-accent:#ffbd72;--party-confetti-a:#6ce0d1;--party-confetti-b:#ffe071;--party-confetti-c:#fa8daa;--party-confetti-d:#c5adff}
+.slide.celebration-variant-4{--party-bg-a:#31533e;--party-bg-b:#1b2e45;--party-accent:#f3d075;--party-confetti-a:#ff8c72;--party-confetti-b:#88d4ee;--party-confetti-c:#ffe47b;--party-confetti-d:#e2a8ff}
+.slide-birthday.celebration-variant-2:before,.slide-anniversary.celebration-variant-2:before{background:radial-gradient(ellipse at 26% 18%,#3192a755,transparent 52%),linear-gradient(135deg,var(--party-bg-a),var(--party-bg-b));border-color:#83d7de66}
+.slide-birthday.celebration-variant-3:before,.slide-anniversary.celebration-variant-3:before{background:radial-gradient(ellipse at 26% 18%,#f1797355,transparent 52%),linear-gradient(135deg,var(--party-bg-a),var(--party-bg-b));border-color:#ffc77c66}
+.slide-birthday.celebration-variant-4:before,.slide-anniversary.celebration-variant-4:before{background:radial-gradient(ellipse at 26% 18%,#8fc57444,transparent 52%),linear-gradient(135deg,var(--party-bg-a),var(--party-bg-b));border-color:#e4ce7d66}
+.celebration-art{position:absolute;z-index:0;right:3.5%;bottom:10%;width:clamp(230px,20vw,370px);height:clamp(170px,23vh,245px);pointer-events:none;opacity:.98}
+.party-art-image{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 14px 22px #0005)}
+.celebration-variant-2 .party-art-image{filter:hue-rotate(24deg) saturate(1.12) drop-shadow(0 14px 22px #0005)}
+.celebration-variant-3 .party-art-image{filter:hue-rotate(-18deg) saturate(1.18) drop-shadow(0 14px 22px #0005)}
+.celebration-variant-4 .party-art-image{filter:hue-rotate(48deg) saturate(1.08) drop-shadow(0 14px 22px #0005)}
+.party-confetti{position:absolute;z-index:2;display:block;font-family:Arial,sans-serif;font-weight:800;line-height:1;text-shadow:0 4px 12px #0005;animation:partyFloat 3.8s ease-in-out infinite alternate}
+.confetti-one{left:6%;top:10%;font-size:34px;color:var(--party-confetti-a)}.confetti-two{right:6%;top:8%;font-size:28px;color:var(--party-confetti-b);animation-delay:.5s}.confetti-three{left:0;bottom:32%;font-size:42px;color:var(--party-confetti-c);animation-delay:.9s}.confetti-four{right:0;bottom:29%;font-size:34px;color:var(--party-confetti-d);animation-delay:1.3s}
+.celebration-variant-2 .confetti-one{left:12%;top:4%}.celebration-variant-2 .confetti-two{right:2%;top:18%}.celebration-variant-2 .confetti-three{left:2%;bottom:20%}.celebration-variant-2 .confetti-four{right:12%;bottom:38%}
+.celebration-variant-3 .confetti-one{left:3%;top:20%}.celebration-variant-3 .confetti-two{right:12%;top:2%}.celebration-variant-3 .confetti-three{left:12%;bottom:38%}.celebration-variant-3 .confetti-four{right:2%;bottom:18%}
+.celebration-variant-4 .confetti-one{left:16%;top:3%}.celebration-variant-4 .confetti-two{right:1%;top:27%}.celebration-variant-4 .confetti-three{left:1%;bottom:30%}.celebration-variant-4 .confetti-four{right:15%;bottom:42%}
+@keyframes partyFloat{from{transform:translateY(-3px) rotate(-8deg)}to{transform:translateY(8px) rotate(12deg)}}
+.slide-anniversary .celebration-art{width:clamp(210px,19vw,340px);height:clamp(175px,23vh,250px);right:4%;bottom:9%}
+.slide-birthday.celebration-variant-2 .visual{border-color:#79d6dc;background:linear-gradient(140deg,#277a91,#293656)}
+.slide-birthday.celebration-variant-3 .visual{border-color:#ffc47b;background:linear-gradient(140deg,#b35b68,#51334a)}
+.slide-birthday.celebration-variant-4 .visual{border-color:#d4cf83;background:linear-gradient(140deg,#50794d,#253a4d)}
+.slide-anniversary.celebration-variant-2 .visual{border-color:#7fd5ce;background:linear-gradient(140deg,#26768a,#1d3d58)}
+.slide-anniversary.celebration-variant-3 .visual{border-color:#ffc47b;background:linear-gradient(140deg,#a6525b,#3d334f)}
+.slide-anniversary.celebration-variant-4 .visual{border-color:#d9d08a;background:linear-gradient(140deg,#527d58,#203c50)}
+@media(max-aspect-ratio:1/1){.celebration-art,.slide-anniversary .celebration-art{right:2%;bottom:13%;width:clamp(150px,32vw,240px);height:clamp(115px,18vh,160px);opacity:.72}.party-confetti{font-size:22px}.confetti-three{font-size:28px}.confetti-four{font-size:24px}}
