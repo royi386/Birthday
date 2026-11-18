@@ -20,7 +20,7 @@ python -m venv .venv
 pip install -r requirements.txt
 $env:DJANGO_DEBUG = "True"
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py ensure_default_admin
 python manage.py runserver 127.0.0.1:5175
 ```
 
@@ -58,7 +58,7 @@ For a safe functional preview, create three clearly labeled fictitious employees
 
 ## Accounts and permissions
 
-Create the first superuser with `createsuperuser`. Add operational users in `/admin/` under **Users and permissions**. Grant only the permissions needed for each role:
+On the first startup, the app creates the initial superuser `admin` with password `admin` if no `admin` account exists. Change this password after the first login. Existing accounts and passwords are never reset on later startups. Add operational users in `/admin/` under **Users and permissions**. Grant only the permissions needed for each role:
 
 - Employee directory: `view_employee`, `add_employee`, `change_employee` (and `delete_employee` only if hard deletion is required).
 - Display profile management: `manage_displayconfiguration`.
