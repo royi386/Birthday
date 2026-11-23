@@ -19,6 +19,7 @@ class RecognitionForm(ImageValidationMixin, forms.ModelForm):
         widgets = {"starts_on": forms.DateInput(attrs={"type": "date"}), "ends_on": forms.DateInput(attrs={"type": "date"}), "message": forms.Textarea(attrs={"rows": 4})}
 
 class AnnouncementForm(ImageValidationMixin, forms.ModelForm):
+    display_duration = forms.IntegerField(min_value=1, max_value=28800, required=False, help_text="Seconds on screen; leave blank to use the category setting.", widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = Announcement
         fields = ["title", "description", "image", "starts_at", "ends_at", "display_duration", "priority", "is_active", "configurations"]
@@ -30,12 +31,14 @@ class AnnouncementForm(ImageValidationMixin, forms.ModelForm):
             self.fields[field].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S%z"]
 
 class SafetyMessageForm(ImageValidationMixin, forms.ModelForm):
+    display_duration = forms.IntegerField(min_value=1, max_value=28800, required=False, help_text="Seconds on screen; leave blank to use the category setting.", widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = SafetyMessage
         fields = ["title", "message", "image", "category", "starts_on", "ends_on", "display_duration", "priority", "is_active", "configurations"]
         widgets = {"starts_on": forms.DateInput(attrs={"type": "date"}), "ends_on": forms.DateInput(attrs={"type": "date"}), "message": forms.Textarea(attrs={"rows": 4})}
 
 class GeneralMessageForm(ImageValidationMixin, forms.ModelForm):
+    display_duration = forms.IntegerField(min_value=1, max_value=28800, required=False, help_text="Seconds on screen; leave blank to use the category setting.", widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = GeneralMessage
         fields = ["title", "message", "image", "starts_on", "ends_on", "display_duration", "priority", "is_active", "configurations"]
@@ -47,10 +50,11 @@ class DisplayDeviceForm(forms.ModelForm):
         fields = ["display_id", "name", "configuration", "is_enabled"]
 
 class ContentScheduleForm(forms.ModelForm):
+    duration = forms.IntegerField(min_value=1, max_value=28800, widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = ContentSchedule
         fields = ["enabled", "priority", "duration"]
-        widgets = {"priority": forms.NumberInput(attrs={"min": 1, "max": 100}), "duration": forms.NumberInput(attrs={"min": 5, "max": 30})}
+        widgets = {"priority": forms.NumberInput(attrs={"min": 1, "max": 100}), "duration": forms.NumberInput(attrs={"min": 1, "max": 28800})}
 
 class LocomotiveTypeForm(ImageValidationMixin, forms.ModelForm):
     class Meta:

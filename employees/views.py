@@ -172,9 +172,9 @@ def display_settings(request):
     return render(request, "employees/display_settings.html", {"form": form})
 
 def display_context():
-    today = today_local(); items = [{"name": e.name, "designation": e.designation, "section": e.section, "photo": e.photo.url if e.photo else "", "greeting": "HAPPY BIRTHDAY!"} for e in birthdays_for(today)]
+    today = today_local(); items = [{"name": e.name, "designation": e.designation, "section": e.section, "photo": (e.display_photo or e.photo).url if (e.display_photo or e.photo) else "", "greeting": "HAPPY BIRTHDAY!"} for e in birthdays_for(today)]
     config = DisplayConfiguration.objects.first()
-    try: duration = config.slide_duration if config else max(5, min(30, int(os.getenv("BIRTHDAY_SLIDE_SECONDS", "10"))))
+    try: duration = config.slide_duration if config else max(1, min(28800, int(os.getenv("BIRTHDAY_SLIDE_SECONDS", "10"))))
     except ValueError: duration = 10
     return {"items": items, "day": today.isoformat(), "date": today.strftime("%A, %d %B %Y"), "office": config.office_name if config else os.getenv("OFFICE_NAME", "Your Office"), "greeting": config.birthday_greeting if config else os.getenv("BIRTHDAY_GREETING", "Many many happy returns of the day!"), "duration": duration, "theme": config.theme if config else "professional"}
 def display_home(request): return redirect("display_birthdays")

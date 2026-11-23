@@ -1,0 +1,5 @@
+﻿services:
+  web:
+    build: .
+    image: birthday-portal-current:local
+    pull_policy: never

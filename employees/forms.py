@@ -35,10 +35,11 @@ class EmployeeForm(forms.ModelForm):
 
 class DisplayConfigurationForm(forms.ModelForm):
     milestones = forms.MultipleChoiceField(choices=[(str(n), f"{n} years") for n in (1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50)], required=False, widget=forms.CheckboxSelectMultiple)
+    slide_duration = forms.IntegerField(min_value=1, max_value=28800, help_text="Seconds per slide, from 1 second to 8 hours.", widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = DisplayConfiguration
         fields = ["organization_name", "office_name", "logo", "background_image", "birthday_greeting", "slide_duration", "theme", "transition", "timezone_name", "date_format", "refresh_interval", "empty_title", "empty_message", "leap_day_policy"]
-        widgets = {"birthday_greeting": forms.TextInput(attrs={"maxlength": 240}), "slide_duration": forms.NumberInput(attrs={"min": 5, "max": 30}), "timezone_name": forms.TextInput(attrs={"placeholder": "Asia/Kolkata"}), "refresh_interval": forms.NumberInput(attrs={"min": 10, "max": 300})}
+        widgets = {"birthday_greeting": forms.TextInput(attrs={"maxlength": 240}), "slide_duration": forms.NumberInput(attrs={"min": 1, "max": 28800}), "timezone_name": forms.TextInput(attrs={"placeholder": "Asia/Kolkata"}), "refresh_interval": forms.NumberInput(attrs={"min": 10, "max": 300})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

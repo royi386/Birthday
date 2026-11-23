@@ -1,7 +1,13 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
+from pathlib import Path
+
 def employee_photo_path(instance, filename):
     return f"employees/{instance.employee_id}/{filename}"
+
+def employee_display_photo_path(instance, filename):
+    return f"employees/{instance.employee_id}/display/{Path(filename).name}"
+
 class Employee(models.Model):
     employee_id = models.CharField(max_length=40, unique=True, db_index=True)
     name = models.CharField(max_length=160)
@@ -9,6 +15,7 @@ class Employee(models.Model):
     section = models.CharField(max_length=120, blank=True, db_index=True)
     date_of_birth = models.DateField()
     photo = models.ImageField(upload_to=employee_photo_path, blank=True, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])])
+    display_photo = models.ImageField(upload_to=employee_display_photo_path, blank=True, editable=False)
     date_of_joining = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -16,6 +23,26 @@ class Employee(models.Model):
     class Meta:
         ordering = ["name", "employee_id"]
         indexes = [models.Index(fields=["is_active", "date_of_birth"])]
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        photo_is_being_saved = update_fields is None or "photo" in update_fields
+        uploaded_photo = getattr(self.photo, "_file", None) if self.photo else None
+        if photo_is_being_saved and uploaded_photo is not None:
+            from django.core.files.base import ContentFile
+            from .photo_processing import centered_face_jpeg
+            centered = centered_face_jpeg(uploaded_photo)
+            if centered:
+                filename = f"{Path(self.photo.name).stem}-centered-v2.jpg"
+                self.display_photo.save(filename, ContentFile(centered), save=False)
+            elif self.display_photo:
+                self.display_photo.delete(save=False)
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"display_photo"}
+        elif photo_is_being_saved and not self.photo and self.display_photo:
+            self.display_photo.delete(save=False)
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"display_photo"}
+        super().save(*args, **kwargs)
     def __str__(self): return f"{self.name} ({self.employee_id})"
 
 class DisplayConfiguration(models.Model):
@@ -47,8 +74,8 @@ class DisplayConfiguration(models.Model):
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
         try: ZoneInfo(self.timezone_name)
         except (ZoneInfoNotFoundError, ValueError): raise ValidationError({"timezone_name": "Enter a valid IANA timezone, such as Asia/Kolkata."})
-        if not 5 <= self.slide_duration <= 30:
-            raise ValidationError({"slide_duration": "Duration must be between 5 and 30 seconds."})
+        if not 1 <= self.slide_duration <= 28800:
+            raise ValidationError({"slide_duration": "Duration must be between 1 second and 8 hours."})
         if not 10 <= self.refresh_interval <= 300:
             raise ValidationError({"refresh_interval": "Refresh interval must be between 10 and 300 seconds."})
         try: milestones = [int(value) for value in self.anniversary_milestones.split(",") if value.strip()]
