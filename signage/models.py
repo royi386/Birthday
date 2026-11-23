@@ -120,6 +120,7 @@ class DisplayOffSchedule(models.Model):
     start_time = models.TimeField(default=datetime_time(22, 0))
     end_time = models.TimeField(default=datetime_time(6, 0))
     days_of_week = models.CharField(max_length=20, default="0,1,2,3,4,5,6")
+    weekday_rules = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
@@ -132,6 +133,13 @@ class DisplayOffSchedule(models.Model):
             raise ValidationError({"days_of_week": "Select one or more valid weekdays."})
         if not days or any(day < 0 or day > 6 for day in days):
             raise ValidationError({"days_of_week": "Select one or more valid weekdays."})
+        if not isinstance(self.weekday_rules, dict):
+            raise ValidationError({"weekday_rules": "Weekday schedule must be a mapping of day to schedule."})
+        for weekday, rule in self.weekday_rules.items():
+            if weekday not in {str(day) for day in range(7)} or not isinstance(rule, dict):
+                raise ValidationError({"weekday_rules": "Weekday schedule contains an invalid day."})
+            if rule.get("enabled") and rule.get("start") == rule.get("end"):
+                raise ValidationError({"weekday_rules": "Each enabled day must have different start and end times."})
 
     def __str__(self): return "Weekly display-off schedule"
 

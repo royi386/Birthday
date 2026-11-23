@@ -96,41 +96,60 @@ class FullScreenPhotoForm(forms.Form):
             validate_image_upload(photo, label="Photo")
         return photos
 
-class DisplayOffScheduleForm(forms.ModelForm):
-    days = forms.MultipleChoiceField(
-        choices=DisplayOffSchedule.WEEKDAY_CHOICES,
-        required=True,
-        widget=forms.CheckboxSelectMultiple,
-    )
-
-    class Meta:
-        model = DisplayOffSchedule
-        fields = ["enabled", "start_time", "end_time"]
-        widgets = {
-            "start_time": forms.TimeInput(attrs={"type": "time"}),
-            "end_time": forms.TimeInput(attrs={"type": "time"}),
-        }
+class DisplayOffScheduleForm(forms.Form):
+    WEEKDAY_FIELDS = [
+        ("monday", "Monday", "0"), ("tuesday", "Tuesday", "1"),
+        ("wednesday", "Wednesday", "2"), ("thursday", "Thursday", "3"),
+        ("friday", "Friday", "4"), ("saturday", "Saturday", "5"),
+        ("sunday", "Sunday", "6"),
+    ]
 
     def __init__(self, *args, **kwargs):
+        self.instance = kwargs.pop("instance", None) or DisplayOffSchedule()
         super().__init__(*args, **kwargs)
-        self.fields["days"].initial = [
-            day for day in (self.instance.days_of_week or "").split(",") if day
-        ]
+        rules = self.instance.weekday_rules or {}
+        for key, label, day in self.WEEKDAY_FIELDS:
+            rule = rules.get(day, {})
+            self.fields[f"{key}_enabled"] = forms.BooleanField(required=False, label=label)
+            self.fields[f"{key}_start"] = forms.TimeField(
+                required=False, label="From", widget=forms.TimeInput(attrs={"type": "time"}),
+            )
+            self.fields[f"{key}_end"] = forms.TimeField(
+                required=False, label="To", widget=forms.TimeInput(attrs={"type": "time"}),
+            )
+            self.initial[f"{key}_enabled"] = bool(rule.get("enabled", False))
+            self.initial[f"{key}_start"] = rule.get("start", "22:00")
+            self.initial[f"{key}_end"] = rule.get("end", "06:00")
 
     def clean(self):
         cleaned = super().clean()
-        start = cleaned.get("start_time")
-        end = cleaned.get("end_time")
-        if start and end and start == end:
-            self.add_error("end_time", "Start and end times must be different.")
+        for key, label, _day in self.WEEKDAY_FIELDS:
+            if not cleaned.get(f"{key}_enabled"):
+                continue
+            start = cleaned.get(f"{key}_start")
+            end = cleaned.get(f"{key}_end")
+            if not start:
+                self.add_error(f"{key}_start", f"Choose a start time for {label}.")
+            if not end:
+                self.add_error(f"{key}_end", f"Choose an end time for {label}.")
+            if start and end and start == end:
+                self.add_error(f"{key}_end", "Start and end times must be different.")
         return cleaned
 
     def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.days_of_week = ",".join(sorted(self.cleaned_data["days"], key=int))
+        rules = {}
+        for key, _label, day in self.WEEKDAY_FIELDS:
+            start = self.cleaned_data.get(f"{key}_start")
+            end = self.cleaned_data.get(f"{key}_end")
+            rules[day] = {
+                "enabled": bool(self.cleaned_data.get(f"{key}_enabled")),
+                "start": start.strftime("%H:%M") if start else "22:00",
+                "end": end.strftime("%H:%M") if end else "06:00",
+            }
+        self.instance.weekday_rules = rules
         if commit:
-            instance.save()
-        return instance
+            self.instance.save()
+        return self.instance
 
 class DisplayHolidayForm(forms.ModelForm):
     class Meta:

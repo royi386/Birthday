@@ -43,7 +43,9 @@ class FullScreenPhotoAdmin(admin.ModelAdmin):
 
 @admin.register(DisplayOffSchedule)
 class DisplayOffScheduleAdmin(admin.ModelAdmin):
-    list_display = ("enabled", "start_time", "end_time", "days_of_week", "updated_at")
+    list_display = ("updated_at",)
+    readonly_fields = ("updated_at",)
+    exclude = ("enabled", "start_time", "end_time", "days_of_week")
 
 @admin.register(DisplayHoliday)
 class DisplayHolidayAdmin(admin.ModelAdmin):

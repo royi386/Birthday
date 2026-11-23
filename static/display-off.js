@@ -58,14 +58,21 @@
       window.dispatchEvent(event);
     }, delay + 150);
   }
+
+  function syncDisplayOff() {
+    var isOff = stage.getAttribute("data-display-off") === "true";
+    clock.hidden = !isOff;
+    if (isOff) moveClock();
+    scheduleBoundaryRefresh();
+  }
+
   updateClock();
-  moveClock();
+  syncDisplayOff();
   window.setInterval(updateClock, 1000);
   window.setInterval(moveClock, 20000);
   window.addEventListener("resize", moveClock);
   window.addEventListener("display-schedule-boundary", scheduleBoundaryRefresh);
-  scheduleBoundaryRefresh();
   if (window.MutationObserver) {
-    new MutationObserver(function () { moveClock(); scheduleBoundaryRefresh(); }).observe(stage, { attributes: true, attributeFilter: ["data-display-off", "data-next-display-off-change"] });
+    new MutationObserver(syncDisplayOff).observe(stage, { attributes: true, attributeFilter: ["data-display-off", "data-next-display-off-change"] });
   }
 })();

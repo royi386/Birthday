@@ -7,14 +7,17 @@
   <div class="table-wrap"><table><thead><tr><th>Content category</th><th>Enabled</th><th>Priority</th><th>Seconds per slide</th></tr></thead><tbody>
     {% for form in formset %}{{ form.id }}<tr><td><b>{{ form.instance.get_category_display }}</b>{% for error in form.non_field_errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ form.enabled }}</td><td>{{ form.priority }}</td><td>{{ form.duration }}</td></tr>{% endfor %}
   </tbody></table></div>
-  <section class="display-off-settings"><h2>Display off schedule</h2><p class="muted">During this weekly time window, the display shows a black screen with a moving clock. Times use the timezone configured for the display.</p>
+  <section class="display-off-settings"><h2>Display off schedule</h2><p class="muted">Set different off hours for each day. Leave a day unchecked to keep the display on all day. Times use the timezone configured for the display.</p>
     {% if off_form.non_field_errors %}<div class="notice error">{{ off_form.non_field_errors }}</div>{% endif %}
-    <label class="field check-field"><span>Enable scheduled display off</span>{{ off_form.enabled }}{% for error in off_form.enabled.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-    <div class="form-grid">
-      <label class="field"><span>From</span>{{ off_form.start_time }}{% for error in off_form.start_time.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-      <label class="field"><span>To</span>{{ off_form.end_time }}{% for error in off_form.end_time.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-    </div>
-    <div class="field"><span>Days</span>{{ off_form.days }}{% for error in off_form.days.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>
+    <div class="table-wrap"><table class="display-off-table"><thead><tr><th>Day</th><th>Display off</th><th>From</th><th>To</th></tr></thead><tbody>
+      <tr><td>Monday</td><td>{{ off_form.monday_enabled }}</td><td>{{ off_form.monday_start }}{% for error in off_form.monday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.monday_end }}{% for error in off_form.monday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Tuesday</td><td>{{ off_form.tuesday_enabled }}</td><td>{{ off_form.tuesday_start }}{% for error in off_form.tuesday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.tuesday_end }}{% for error in off_form.tuesday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Wednesday</td><td>{{ off_form.wednesday_enabled }}</td><td>{{ off_form.wednesday_start }}{% for error in off_form.wednesday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.wednesday_end }}{% for error in off_form.wednesday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Thursday</td><td>{{ off_form.thursday_enabled }}</td><td>{{ off_form.thursday_start }}{% for error in off_form.thursday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.thursday_end }}{% for error in off_form.thursday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Friday</td><td>{{ off_form.friday_enabled }}</td><td>{{ off_form.friday_start }}{% for error in off_form.friday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.friday_end }}{% for error in off_form.friday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Saturday</td><td>{{ off_form.saturday_enabled }}</td><td>{{ off_form.saturday_start }}{% for error in off_form.saturday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.saturday_end }}{% for error in off_form.saturday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+      <tr><td>Sunday</td><td>{{ off_form.sunday_enabled }}</td><td>{{ off_form.sunday_start }}{% for error in off_form.sunday_start.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ off_form.sunday_end }}{% for error in off_form.sunday_end.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td></tr>
+    </tbody></table></div>
   </section>
   <div class="form-actions"><button class="button primary">Save schedule</button></div>
 </form>

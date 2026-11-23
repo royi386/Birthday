@@ -123,6 +123,8 @@
 #stage[data-display-off="true"]{background:#000!important}
 #stage[data-display-off="true"]:before,#stage[data-display-off="true"]:after{display:none}
 #stage[data-display-off="true"] .ornament,#stage[data-display-off="true"] .slides,#stage[data-display-off="true"] .display-footer,#stage[data-display-off="true"] .offline{display:none!important}
-.display-off-clock{display:none;position:absolute;left:24px;top:24px;z-index:10;display:flex;flex-direction:column;gap:8px;min-width:180px;padding:12px 18px;color:#b9bec4;font:500 clamp(24px,3vw,42px)/1.15 "DM Sans",Arial,sans-serif;letter-spacing:.08em;text-shadow:0 0 14px #aeb8c533;opacity:.78;transition:left 8s ease-in-out,top 8s ease-in-out;pointer-events:none}
+.display-off-clock{display:none;position:absolute;left:24px;top:24px;z-index:10;flex-direction:column;gap:8px;min-width:180px;padding:12px 18px;color:#b9bec4;font:500 clamp(24px,3vw,42px)/1.15 "DM Sans",Arial,sans-serif;letter-spacing:.08em;text-shadow:0 0 14px #aeb8c533;opacity:.78;transition:left 8s ease-in-out,top 8s ease-in-out;pointer-events:none}
 .display-off-date{font-size:.36em;letter-spacing:.16em;color:#77818b}
 #stage[data-display-off="true"] .display-off-clock{display:flex}
+
+.display-off-clock[hidden]{display:none!important}

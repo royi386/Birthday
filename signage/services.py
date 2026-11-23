@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from django.db.models import Q
 from django.utils import timezone
@@ -19,45 +19,54 @@ def office_today(config=None):
 
 def display_off_active(config=None, now=None):
     schedule = DisplayOffSchedule.objects.first()
-    if not schedule or not schedule.enabled or schedule.start_time == schedule.end_time:
+    if not schedule:
         return False
     config = config or DisplayConfiguration.objects.first()
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
     local_now = timezone.localtime(now or timezone.now(), zone)
-    local_time = local_now.time().replace(tzinfo=None)
-    try:
-        active_days = {int(value) for value in schedule.days_of_week.split(",") if value != ""}
-    except ValueError:
-        return False
-    if not active_days:
-        return False
-    if schedule.start_time < schedule.end_time:
-        return local_now.weekday() in active_days and schedule.start_time <= local_time < schedule.end_time
-    previous_day = (local_now.weekday() - 1) % 7
-    return (
-        (local_now.weekday() in active_days and local_time >= schedule.start_time)
-        or (previous_day in active_days and local_time < schedule.end_time)
-    )
+    rules = schedule.weekday_rules or {}
+    for offset in (-1, 0):
+        start_day = local_now.date() + timedelta(days=offset)
+        rule = rules.get(str(start_day.weekday()), {})
+        if not rule.get("enabled"):
+            continue
+        try:
+            start_time = time.fromisoformat(rule["start"])
+            end_time = time.fromisoformat(rule["end"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start_time == end_time:
+            continue
+        end_day = start_day if start_time < end_time else start_day + timedelta(days=1)
+        start = datetime.combine(start_day, start_time, tzinfo=zone)
+        end = datetime.combine(end_day, end_time, tzinfo=zone)
+        if start <= local_now < end:
+            return True
+    return False
 
 def next_display_off_change(config=None, now=None):
     schedule = DisplayOffSchedule.objects.first()
-    if not schedule or not schedule.enabled or schedule.start_time == schedule.end_time:
+    if not schedule:
         return ""
     config = config or DisplayConfiguration.objects.first()
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
     local_now = timezone.localtime(now or timezone.now(), zone)
-    try:
-        active_days = {int(value) for value in schedule.days_of_week.split(",") if value != ""}
-    except ValueError:
-        return ""
     boundaries = []
     for offset in range(-1, 8):
         start_day = local_now.date() + timedelta(days=offset)
-        if start_day.weekday() not in active_days:
+        rule = (schedule.weekday_rules or {}).get(str(start_day.weekday()), {})
+        if not rule.get("enabled"):
             continue
-        start = datetime.combine(start_day, schedule.start_time, tzinfo=zone)
-        end_day = start_day if schedule.start_time < schedule.end_time else start_day + timedelta(days=1)
-        end = datetime.combine(end_day, schedule.end_time, tzinfo=zone)
+        try:
+            start_time = time.fromisoformat(rule["start"])
+            end_time = time.fromisoformat(rule["end"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start_time == end_time:
+            continue
+        start = datetime.combine(start_day, start_time, tzinfo=zone)
+        end_day = start_day if start_time < end_time else start_day + timedelta(days=1)
+        end = datetime.combine(end_day, end_time, tzinfo=zone)
         if start > local_now:
             boundaries.append(start)
         if end > local_now:
