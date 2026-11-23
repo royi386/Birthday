@@ -2,6 +2,7 @@ from pathlib import Path
 
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from employees.models import Employee
 from employees.photo_processing import centered_face_jpeg
@@ -21,7 +22,10 @@ class Command(BaseCommand):
         processed = no_face = failed = 0
         employees = Employee.objects.exclude(photo="")
         if not options["force"]:
-            employees = employees.filter(display_photo="")
+            employees = employees.filter(
+                Q(display_photo="")
+                | ~Q(display_photo__endswith="-centered-v2.jpg")
+            )
         employees = employees.iterator()
         for employee in employees:
             try:
@@ -29,7 +33,7 @@ class Command(BaseCommand):
                     centered = centered_face_jpeg(photo)
                 if not centered:
                     no_face += 1
-                    if options["force"] and employee.display_photo:
+                    if employee.display_photo:
                         employee.display_photo.delete(save=False)
                         employee.save(update_fields=["display_photo"])
                     continue
