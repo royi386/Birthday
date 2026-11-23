@@ -98,3 +98,14 @@
 
 .theme-minimal .slide-fleet .fleet-page>h1,.theme-minimal .slide-fleet .fleet-card h2,.theme-minimal .slide-fleet .fleet-card p{color:#172b46}
 .theme-minimal .slide-fleet .fleet-circle{border-color:#172b46}
+
+/* Keep the complete locomotive population inside the display viewport. */
+.slide-fleet{padding:4vh 4vw 12vh}
+.fleet-page{min-height:0;gap:clamp(8px,1.5vh,20px)}
+.fleet-page>h1{flex:none;font-size:clamp(24px,4.6vw,64px)}
+.fleet-grid{flex:1 1 auto;min-height:0;max-height:none;overflow:hidden;grid-auto-rows:minmax(0,1fr);align-items:stretch;gap:clamp(6px,1vh,14px) clamp(8px,1.4vw,22px)}
+.fleet-card{justify-content:center;overflow:hidden}
+.fleet-circle{width:clamp(40px,min(16vw,calc(42vh / var(--fleet-rows,1))),220px);max-width:100%}
+.fleet-card h2{max-width:100%;margin:clamp(2px,.8vh,10px) 0;font-size:clamp(14px,min(3.1vw,calc(5.2vh / var(--fleet-rows,1))),52px);line-height:1.05;overflow-wrap:anywhere}
+.fleet-card p{font-size:clamp(18px,min(3.8vw,calc(6vh / var(--fleet-rows,1))),60px);line-height:1}
+@media(max-aspect-ratio:1/1){.slide-fleet{padding:3vh 5vw 13vh}.fleet-page{gap:clamp(6px,1vh,14px)}.fleet-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none;gap:clamp(5px,.8vh,10px) 8px}.fleet-circle{width:clamp(40px,min(25vw,calc(38vh / var(--fleet-rows,1))),160px)}.fleet-card h2{margin:clamp(2px,.5vh,6px) 0;font-size:clamp(13px,min(5vw,calc(4.8vh / var(--fleet-rows,1))),30px)}.fleet-card p{font-size:clamp(16px,min(6vw,calc(5.6vh / var(--fleet-rows,1))),36px)}.fleet-page>h1{font-size:clamp(22px,7vw,44px)}}
