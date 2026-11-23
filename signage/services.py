@@ -17,10 +17,10 @@ def office_today(config=None):
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
     return timezone.localdate(timezone.now(), zone)
 
-def display_off_active(config=None, now=None):
+def display_on_active(config=None, now=None):
     schedule = DisplayOffSchedule.objects.first()
-    if not schedule:
-        return False
+    if not schedule or not schedule.schedule_enabled:
+        return True
     config = config or DisplayConfiguration.objects.first()
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
     local_now = timezone.localtime(now or timezone.now(), zone)
@@ -44,9 +44,12 @@ def display_off_active(config=None, now=None):
             return True
     return False
 
+def display_off_active(config=None, now=None):
+    return not display_on_active(config, now)
+
 def next_display_off_change(config=None, now=None):
     schedule = DisplayOffSchedule.objects.first()
-    if not schedule:
+    if not schedule or not schedule.schedule_enabled:
         return ""
     config = config or DisplayConfiguration.objects.first()
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")

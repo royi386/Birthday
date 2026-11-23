@@ -146,6 +146,7 @@ class SchedulerTests(TestCase):
 
     def test_display_off_schedule_handles_overnight_ranges_and_selected_days(self):
         schedule = DisplayOffSchedule.objects.get(pk=1)
+        schedule.schedule_enabled = True
         schedule.weekday_rules = {
             str(day): {
                 "enabled": day in (0, 1),
@@ -156,16 +157,25 @@ class SchedulerTests(TestCase):
         }
         schedule.save()
         zone = ZoneInfo("Asia/Kolkata")
-        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 23, 23, 0, tzinfo=zone)))
-        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 5, 59, tzinfo=zone)))
-        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 20, 59, tzinfo=zone)))
-        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 22, 0, tzinfo=zone)))
-        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 6, 0, tzinfo=zone)))
-        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 23, 0, tzinfo=zone)))
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 23, 23, 0, tzinfo=zone)))
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 5, 59, tzinfo=zone)))
+        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 20, 59, tzinfo=zone)))
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 22, 0, tzinfo=zone)))
+        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 6, 0, tzinfo=zone)))
+        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 23, 0, tzinfo=zone)))
+
+    def test_disabled_display_on_schedule_keeps_slideshow_running(self):
+        schedule = DisplayOffSchedule.objects.get(pk=1)
+        schedule.schedule_enabled = False
+        schedule.weekday_rules = {"0": {"enabled": True, "start": "22:00", "end": "06:00"}}
+        schedule.save()
+        zone = ZoneInfo("Asia/Kolkata")
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 23, 23, 0, tzinfo=zone)))
 
     def test_display_off_schedule_form_saves_time_and_weekdays(self):
         schedule = DisplayOffSchedule.objects.get(pk=1)
         form = DisplayOffScheduleForm({
+            "display_off-schedule_enabled": "on",
             "display_off-monday_enabled": "on",
             "display_off-monday_start": "22:30",
             "display_off-monday_end": "06:15",
@@ -175,6 +185,7 @@ class SchedulerTests(TestCase):
         }, instance=schedule, prefix="display_off")
         self.assertTrue(form.is_valid(), form.errors)
         saved = form.save()
+        self.assertTrue(saved.schedule_enabled)
         self.assertTrue(saved.weekday_rules["0"]["enabled"])
         self.assertEqual(saved.weekday_rules["0"]["start"], "22:30")
         self.assertTrue(saved.weekday_rules["2"]["enabled"])
@@ -260,7 +271,8 @@ class SignageAdminFlowTests(TestCase):
     def test_system_settings_page_includes_weekly_display_off_controls(self):
         self.user.user_permissions.add(Permission.objects.get(codename="change_contentschedule"))
         response = self.client.get(reverse("system_settings"))
-        self.assertContains(response, "Display off schedule")
+        self.assertContains(response, "Display on schedule")
+        self.assertContains(response, 'name="display_off-schedule_enabled"')
         self.assertContains(response, 'name="display_off-monday_start"')
 
     def test_locomotive_type_can_be_created_and_audited(self):

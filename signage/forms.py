@@ -97,6 +97,7 @@ class FullScreenPhotoForm(forms.Form):
         return photos
 
 class DisplayOffScheduleForm(forms.Form):
+    schedule_enabled = forms.BooleanField(required=False, label="Enable display-on schedule")
     WEEKDAY_FIELDS = [
         ("monday", "Monday", "0"), ("tuesday", "Tuesday", "1"),
         ("wednesday", "Wednesday", "2"), ("thursday", "Thursday", "3"),
@@ -108,6 +109,7 @@ class DisplayOffScheduleForm(forms.Form):
         self.instance = kwargs.pop("instance", None) or DisplayOffSchedule()
         super().__init__(*args, **kwargs)
         rules = self.instance.weekday_rules or {}
+        self.initial["schedule_enabled"] = self.instance.schedule_enabled
         for key, label, day in self.WEEKDAY_FIELDS:
             rule = rules.get(day, {})
             self.fields[f"{key}_enabled"] = forms.BooleanField(required=False, label=label)
@@ -147,6 +149,7 @@ class DisplayOffScheduleForm(forms.Form):
                 "end": end.strftime("%H:%M") if end else "06:00",
             }
         self.instance.weekday_rules = rules
+        self.instance.schedule_enabled = bool(self.cleaned_data.get("schedule_enabled"))
         if commit:
             self.instance.save()
         return self.instance

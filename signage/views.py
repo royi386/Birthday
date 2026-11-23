@@ -138,7 +138,7 @@ def system_settings(request):
             with transaction.atomic():
                 formset.save()
                 off_form.save()
-            audit(request.user, "schedule", "Content schedule", "Updated content rotation and display-off schedule.")
+            audit(request.user, "schedule", "Content schedule", "Updated content rotation and display-on schedule.")
             messages.success(request, "Schedule settings saved.")
             return redirect("system_settings")
     return render(request, "signage/system_settings.html", {"formset": formset, "off_form": off_form, "audit_entries": AuditLog.objects.select_related("actor")[:40], "categories": ContentSchedule.CATEGORY_CHOICES})

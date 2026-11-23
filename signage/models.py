@@ -121,6 +121,7 @@ class DisplayOffSchedule(models.Model):
     end_time = models.TimeField(default=datetime_time(6, 0))
     days_of_week = models.CharField(max_length=20, default="0,1,2,3,4,5,6")
     weekday_rules = models.JSONField(default=dict, blank=True)
+    schedule_enabled = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
@@ -141,7 +142,7 @@ class DisplayOffSchedule(models.Model):
             if rule.get("enabled") and rule.get("start") == rule.get("end"):
                 raise ValidationError({"weekday_rules": "Each enabled day must have different start and end times."})
 
-    def __str__(self): return "Weekly display-off schedule"
+    def __str__(self): return "Weekly display-on schedule"
 
 class DisplayHoliday(models.Model):
     name = models.CharField(max_length=120)
