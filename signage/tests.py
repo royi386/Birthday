@@ -82,9 +82,13 @@ class SchedulerTests(TestCase):
         GeneralMessage.objects.create(title="Office hours", message="Open at nine", starts_on=date(2026, 11, 1), ends_on=date(2026, 11, 30))
         slides = build_display_items(self.config)
         fleet = [item for item in slides if item["category"] == "fleet"]
-        self.assertEqual([item["title"] for item in fleet], ["WAP5", "WAP7"])
-        self.assertEqual([item["message"] for item in fleet], ["Present population: 11", "Present population: 43"])
-        self.assertTrue(all(item["duration"] == 12 for item in fleet))
+        self.assertEqual(len(fleet), 1)
+        self.assertEqual(fleet[0]["title"], "Locomotive population")
+        self.assertEqual(
+            [(item["name"], item["population"]) for item in fleet[0]["locomotives"]],
+            [("WAP5", 11), ("WAP7", 43)],
+        )
+        self.assertEqual(fleet[0]["duration"], 12)
         self.assertEqual(slides[-1]["category"], "fleet")
         self.assertEqual(ContentSchedule.objects.get(category="fleet").priority, 1)
 
