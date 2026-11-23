@@ -109,3 +109,12 @@
 .fleet-card h2{max-width:100%;margin:clamp(2px,.8vh,10px) 0;font-size:clamp(14px,min(3.1vw,calc(5.2vh / var(--fleet-rows,1))),52px);line-height:1.05;overflow-wrap:anywhere}
 .fleet-card p{font-size:clamp(18px,min(3.8vw,calc(6vh / var(--fleet-rows,1))),60px);line-height:1}
 @media(max-aspect-ratio:1/1){.slide-fleet{padding:3vh 5vw 13vh}.fleet-page{gap:clamp(6px,1vh,14px)}.fleet-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none;gap:clamp(5px,.8vh,10px) 8px}.fleet-circle{width:clamp(40px,min(25vw,calc(38vh / var(--fleet-rows,1))),160px)}.fleet-card h2{margin:clamp(2px,.5vh,6px) 0;font-size:clamp(13px,min(5vw,calc(4.8vh / var(--fleet-rows,1))),30px)}.fleet-card p{font-size:clamp(16px,min(6vw,calc(5.6vh / var(--fleet-rows,1))),36px)}.fleet-page>h1{font-size:clamp(22px,7vw,44px)}}
+
+/* Uploaded photo slides occupy the entire display without signage overlays. */
+.slide-photos{padding:0;background:#000;overflow:hidden}
+.slide-photos .slide-layout{width:100%;height:100%;max-width:none;gap:0}
+.full-screen-photo{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;background:#000}
+.full-screen-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.slides:has(.slide-photos.current)~.display-footer{display:none}
+
+.slides:has(.slide-photos.current)~.offline{display:none}

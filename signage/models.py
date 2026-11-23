@@ -8,7 +8,7 @@ from django.utils import timezone
 IMAGE_VALIDATOR = FileExtensionValidator(["jpg", "jpeg", "png", "webp"])
 
 class ContentSchedule(models.Model):
-    CATEGORY_CHOICES = [("birthday", "Birthday wishes"), ("anniversary", "Work anniversaries"), ("recognition", "Employee recognition"), ("announcement", "Office announcements"), ("safety", "Safety messages"), ("general", "General information"), ("fleet", "Locomotive population")]
+    CATEGORY_CHOICES = [("birthday", "Birthday wishes"), ("anniversary", "Work anniversaries"), ("recognition", "Employee recognition"), ("announcement", "Office announcements"), ("safety", "Safety messages"), ("general", "General information"), ("photos", "Full screen photos"), ("fleet", "Locomotive population")]
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, unique=True)
     enabled = models.BooleanField(default=True)
     priority = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(1), MaxValueValidator(100)])
@@ -95,6 +95,20 @@ class LocomotiveType(models.Model):
         verbose_name = "locomotive type"
         verbose_name_plural = "locomotive population"
     def __str__(self): return f"{self.name} ({self.population})"
+
+class FullScreenPhoto(models.Model):
+    photo = models.ImageField(upload_to="full_screen_photos/", validators=[IMAGE_VALIDATOR])
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "pk"]
+
+    def __str__(self): return self.photo.name.rsplit("/", 1)[-1]
+
+    def delete(self, *args, **kwargs):
+        if self.photo:
+            self.photo.delete(save=False)
+        return super().delete(*args, **kwargs)
 
 class DisplayDevice(models.Model):
     display_id = models.SlugField(max_length=48, unique=True)

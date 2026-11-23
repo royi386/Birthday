@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Full screen photos{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">DISPLAY CONTENT</p><h1>Full screen photos</h1><p class="muted">Uploaded photos appear as full-screen slides in the slideshow rotation.</p></div></div>
+{% if can_upload or can_delete %}
+<form method="post" enctype="multipart/form-data" class="panel form-panel">
+  {% csrf_token %}
+  {% if can_upload %}
+  <label class="field"><span>{{ form.photos.label }}</span>{{ form.photos }}<small>{{ form.photos.help_text }}</small>{% for error in form.photos.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+  {% endif %}
+  <section class="full-screen-photo-library">
+    <div class="panel-head"><div><h2>Uploaded photos</h2><p class="muted">{{ photos|length }} photo(s) in the slideshow rotation.</p></div></div>
+    <div class="full-screen-photo-grid">
+      {% for photo in photos %}
+      <label class="full-screen-photo-item">
+        {% if can_delete %}<input type="checkbox" name="remove_photos" value="{{ photo.pk }}" aria-label="Remove {{ photo }}">{% endif %}
+        <img src="{{ photo.photo.url }}" alt="{{ photo }}">
+        <span>{{ photo }}</span>
+      </label>
+      {% empty %}<p class="empty-cell">No photos uploaded yet.</p>{% endfor %}
+    </div>
+    {% for error in form.remove_photos.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+  </section>
+  {% if can_upload or can_delete %}<div class="form-actions"><button class="button primary">Save photo library</button></div>{% endif %}
+</form>
+{% else %}
+<section class="panel full-screen-photo-library"><div class="panel-head"><div><h2>Uploaded photos</h2><p class="muted">{{ photos|length }} photo(s) in the slideshow rotation.</p></div></div><div class="full-screen-photo-grid">{% for photo in photos %}<figure class="full-screen-photo-item"><img src="{{ photo.photo.url }}" alt="{{ photo }}"><figcaption>{{ photo }}</figcaption></figure>{% empty %}<p class="empty-cell">No photos uploaded yet.</p>{% endfor %}</div></section>
+{% endif %}
+{% endblock %}

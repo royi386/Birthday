@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 
 @admin.register(ContentSchedule)
 class ContentScheduleAdmin(admin.ModelAdmin):
@@ -35,6 +35,11 @@ class LocomotiveTypeAdmin(admin.ModelAdmin):
     list_display = ("name", "population", "is_active", "updated_at")
     list_filter = ("is_active",)
     search_fields = ("name",)
+
+@admin.register(FullScreenPhoto)
+class FullScreenPhotoAdmin(admin.ModelAdmin):
+    list_display = ("photo", "uploaded_at")
+    readonly_fields = ("uploaded_at",)
 
 @admin.register(DisplayDevice)
 class DisplayDeviceAdmin(admin.ModelAdmin):

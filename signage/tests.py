@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from employees.models import DisplayConfiguration, Employee, EmployeePhoto
-from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 from .services import build_display_items, display_payload, upcoming_anniversaries
 
 class SchedulerTests(TestCase):
@@ -109,6 +109,19 @@ class SchedulerTests(TestCase):
         self.assertEqual(slides[-1]["category"], "fleet")
         self.assertEqual(ContentSchedule.objects.get(category="fleet").priority, 1)
 
+    def test_full_screen_photos_create_individual_full_bleed_slides(self):
+        from PIL import Image
+        image_data = BytesIO()
+        Image.new("RGB", (64, 48), "navy").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            FullScreenPhoto.objects.create(photo=SimpleUploadedFile("first.jpg", jpeg, content_type="image/jpeg"))
+            FullScreenPhoto.objects.create(photo=SimpleUploadedFile("second.jpg", jpeg, content_type="image/jpeg"))
+            slides = [item for item in build_display_items(self.config) if item["category"] == "photos"]
+        self.assertEqual(len(slides), 2)
+        self.assertTrue(all(item["image"].startswith("/media/full_screen_photos/") for item in slides))
+        self.assertEqual({item["duration"] for item in slides}, {10})
+
     def test_content_can_be_targeted_to_one_display_configuration(self):
         other = DisplayConfiguration.objects.create(organization_name="Other Org", office_name="Remote Office")
         item = GeneralMessage.objects.create(title="Remote only", message="For remote office", starts_on=date(2026, 1, 1), ends_on=date(2030, 1, 1))
@@ -193,4 +206,29 @@ class SignageAdminFlowTests(TestCase):
         locomotive = LocomotiveType.objects.get(name="WAG7")
         self.assertEqual(locomotive.population, 28)
         self.assertTrue(AuditLog.objects.filter(actor=self.user, action="create", target=str(locomotive)).exists())
+
+    def test_full_screen_photo_page_accepts_multiple_uploads_and_displays_them(self):
+        from PIL import Image
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="add_fullscreenphoto"),
+            Permission.objects.get(codename="delete_fullscreenphoto"),
+            Permission.objects.get(codename="view_fullscreenphoto"),
+        )
+        image_data = BytesIO()
+        Image.new("RGB", (64, 48), "darkgreen").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            uploads = {"photos": [
+                SimpleUploadedFile("one.jpg", jpeg, content_type="image/jpeg"),
+                SimpleUploadedFile("two.jpg", jpeg, content_type="image/jpeg"),
+            ]}
+            response = self.client.post(reverse("full_screen_photos"), uploads)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(FullScreenPhoto.objects.count(), 2)
+            response = self.client.get(reverse("full_screen_photos"))
+            self.assertContains(response, "2 photo(s) in the slideshow rotation.")
+            photo = FullScreenPhoto.objects.first()
+            response = self.client.post(reverse("full_screen_photos"), {"remove_photos": [str(photo.pk)]})
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(FullScreenPhoto.objects.count(), 1)
 

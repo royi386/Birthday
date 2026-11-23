@@ -3,12 +3,13 @@ from zoneinfo import ZoneInfo
 from django.db.models import Q
 from django.utils import timezone
 from employees.models import DisplayConfiguration, Employee
-from .models import Announcement, ContentSchedule, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .models import Announcement, ContentSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 
 DEFAULT_SCHEDULE = {
     "birthday": (True, 100, 10), "anniversary": (True, 90, 10),
     "safety": (True, 85, 15), "recognition": (True, 70, 15),
-    "announcement": (True, 60, 15), "general": (True, 40, 15), "fleet": (True, 1, 10),
+    "announcement": (True, 60, 15), "photos": (True, 50, 10),
+    "general": (True, 40, 15), "fleet": (True, 1, 10),
 }
 
 def office_today(config=None):
@@ -110,6 +111,13 @@ def build_display_items(config=None, device=None, category_filter=None):
         qs = model.objects.filter(is_active=True, starts_on__lte=today, ends_on__gte=today).order_by("-priority", "starts_on", "pk")
         for item in _is_configured_for(qs, "configurations", config):
             buckets[category].append(_base_item(category, item.title, item.message, _image(item.image), item.display_duration or schedules[category].duration, item.priority, subcategory=getattr(item, "get_category_display", lambda: "")()))
+
+    if "photos" in buckets:
+        for photo in FullScreenPhoto.objects.all():
+            buckets["photos"].append(_base_item(
+                "photos", "Full screen photo", "", _image(photo.photo),
+                schedules["photos"].duration, schedules["photos"].priority,
+            ))
 
     if "fleet" in buckets:
         locomotives = list(LocomotiveType.objects.filter(is_active=True).order_by("name"))

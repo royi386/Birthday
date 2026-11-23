@@ -18,8 +18,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from employees.forms import DisplayConfigurationForm
 from employees.models import DisplayConfiguration, Employee
-from .forms import AnnouncementForm, ContentScheduleForm, DisplayDeviceForm, GeneralMessageForm, LocomotiveTypeForm, RecognitionForm, SafetyMessageForm
-from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .forms import AnnouncementForm, ContentScheduleForm, DisplayDeviceForm, FullScreenPhotoForm, GeneralMessageForm, LocomotiveTypeForm, RecognitionForm, SafetyMessageForm
+from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 from .services import display_config, display_payload, office_today, upcoming_anniversaries
 from .backup import create_backup
 
@@ -195,6 +195,40 @@ def locomotive_type_toggle(request, pk):
     return redirect("locomotive_types")
 
 @login_required
+def full_screen_photos(request):
+    user = request.user
+    permissions = (
+        "signage.view_fullscreenphoto",
+        "signage.add_fullscreenphoto",
+        "signage.delete_fullscreenphoto",
+    )
+    if not any(user.has_perm(permission) for permission in permissions): raise PermissionDenied
+    form = FullScreenPhotoForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        photo_ids = form.cleaned_data.get("remove_photos", [])
+        uploads = form.cleaned_data.get("photos", [])
+        if photo_ids and not user.has_perm("signage.delete_fullscreenphoto"):
+            raise PermissionDenied
+        if uploads and not user.has_perm("signage.add_fullscreenphoto"):
+            raise PermissionDenied
+        removed = 0
+        for photo in FullScreenPhoto.objects.filter(pk__in=photo_ids):
+            photo.delete()
+            removed += 1
+        for upload in uploads:
+            FullScreenPhoto.objects.create(photo=upload)
+        if removed or uploads:
+            audit(user, "photos", "Full screen photos", f"Removed {removed} photo(s) and uploaded {len(uploads)} photo(s).")
+            messages.success(request, f"Photo library updated: {len(uploads)} uploaded, {removed} removed.")
+            return redirect("full_screen_photos")
+    return render(request, "signage/full_screen_photos.html", {
+        "form": form,
+        "photos": FullScreenPhoto.objects.all(),
+        "can_upload": user.has_perm("signage.add_fullscreenphoto"),
+        "can_delete": user.has_perm("signage.delete_fullscreenphoto"),
+    })
+
+@login_required
 def backup_download(request):
     if not request.user.is_staff: raise PermissionDenied
     temp_dir = Path(tempfile.mkdtemp(prefix="odds-backup-"))
@@ -224,7 +258,7 @@ def display_feed(request, device_id=None, category_filter=None):
     return response
 
 def service_worker(request):
-    js = """const CACHE='odds-display-v12';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/'])).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()).then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(tabs=>Promise.all(tabs.filter(tab=>new URL(tab.url).pathname.startsWith('/display/')).map(tab=>tab.navigate(tab.url))))));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
+    js = """const CACHE='odds-display-v13';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/'])).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()).then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(tabs=>Promise.all(tabs.filter(tab=>new URL(tab.url).pathname.startsWith('/display/')).map(tab=>tab.navigate(tab.url))))));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
     return HttpResponse(js, content_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 def health(request):
     try:

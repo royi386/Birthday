@@ -1,6 +1,6 @@
 from django import forms
 from employees.forms import validate_image_upload
-from .models import Announcement, DisplayDevice, GeneralMessage, LocomotiveType, Recognition, SafetyMessage, ContentSchedule
+from .models import Announcement, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage, ContentSchedule
 
 class ImageValidationMixin:
     def clean(self):
@@ -61,3 +61,37 @@ class LocomotiveTypeForm(ImageValidationMixin, forms.ModelForm):
         model = LocomotiveType
         fields = ["name", "photo", "population", "is_active"]
         widgets = {"population": forms.NumberInput(attrs={"min": 0})}
+
+class MultiplePhotoInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+class MultiplePhotoField(forms.FileField):
+    widget = MultiplePhotoInput
+
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        uploads = data if isinstance(data, (list, tuple)) else [data]
+        return [super(MultiplePhotoField, self).clean(upload, initial) for upload in uploads]
+
+class FullScreenPhotoForm(forms.Form):
+    photos = MultiplePhotoField(
+        required=False,
+        label="Upload photos",
+        help_text="Select multiple JPEG, PNG or WebP images. Each file can be up to 10 MB.",
+        widget=MultiplePhotoInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+    )
+    remove_photos = forms.MultipleChoiceField(required=False, choices=(), widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["remove_photos"].choices = [
+            (str(photo.pk), photo.photo.name.rsplit("/", 1)[-1])
+            for photo in FullScreenPhoto.objects.all()
+        ]
+
+    def clean_photos(self):
+        photos = self.cleaned_data.get("photos", [])
+        for photo in photos:
+            validate_image_upload(photo, label="Photo")
+        return photos
