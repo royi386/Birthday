@@ -28,6 +28,7 @@ urlpatterns = [
     path("locomotive-population/<int:pk>/edit/", signage_views.locomotive_type_edit, name="locomotive_type_edit"),
     path("locomotive-population/<int:pk>/toggle/", signage_views.locomotive_type_toggle, name="locomotive_type_toggle"),
     path("full-screen-photos/", signage_views.full_screen_photos, name="full_screen_photos"),
+    path("holiday-calendar/", signage_views.holiday_calendar, name="holiday_calendar"),
     path("recognition/", signage_views.content_list, {"section": "recognition"}, name="recognition"),
     path("recognition/add/", signage_views.content_edit, {"section": "recognition"}, name="recognition_add"),
     path("recognition/<int:pk>/edit/", signage_views.content_edit, {"section": "recognition"}, name="recognition_edit"),

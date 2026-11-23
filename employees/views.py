@@ -12,18 +12,12 @@ from django.views.decorators.http import require_POST
 from .forms import DisplayConfigurationForm, EmployeeForm
 from .models import DisplayConfiguration, Employee
 from signage.models import Announcement, AuditLog
-from signage.services import office_today, upcoming_anniversaries
+from signage.services import birthday_observances, office_today, upcoming_anniversaries
 
 def today_local(): return office_today()
 def birthdays_for(day, config=None):
-    qs = Employee.objects.filter(is_active=True)
-    leap = day.year % 4 == 0 and (day.year % 100 != 0 or day.year % 400 == 0)
-    policy = config.leap_day_policy if config else "feb28"
-    if day.month == 2 and day.day == 28 and not leap and policy == "feb28":
-        return qs.filter(date_of_birth__month=2, date_of_birth__day__in=[28, 29]).order_by("name")
-    if day.month == 3 and day.day == 1 and not leap and policy == "mar1":
-        return qs.filter(Q(date_of_birth__month=3, date_of_birth__day=1) | Q(date_of_birth__month=2, date_of_birth__day=29)).order_by("name")
-    return qs.filter(date_of_birth__month=day.month, date_of_birth__day=day.day).order_by("name")
+    employee_ids = [person.pk for person, _advance in birthday_observances(day, config)]
+    return Employee.objects.filter(pk__in=employee_ids).order_by("name", "employee_id")
 
 @login_required
 def dashboard(request):

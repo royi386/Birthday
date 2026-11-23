@@ -18,8 +18,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from employees.forms import DisplayConfigurationForm
 from employees.models import DisplayConfiguration, Employee
-from .forms import AnnouncementForm, ContentScheduleForm, DisplayDeviceForm, FullScreenPhotoForm, GeneralMessageForm, LocomotiveTypeForm, RecognitionForm, SafetyMessageForm
-from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .forms import AnnouncementForm, ContentScheduleForm, DisplayDeviceForm, DisplayHolidayForm, DisplayOffScheduleForm, FullScreenPhotoForm, GeneralMessageForm, LocomotiveTypeForm, RecognitionForm, SafetyMessageForm
+from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, DisplayHoliday, DisplayOffSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 from .services import display_config, display_payload, office_today, upcoming_anniversaries
 from .backup import create_backup
 
@@ -129,12 +129,19 @@ def system_settings(request):
     if not (request.user.is_superuser or request.user.has_perm("signage.change_contentschedule")): raise PermissionDenied
     ScheduleSet = modelformset_factory(ContentSchedule, form=ContentScheduleForm, extra=0)
     formset = ScheduleSet(request.POST or None, queryset=ContentSchedule.objects.all().order_by("-priority", "category"))
-    if request.method == "POST" and formset.is_valid():
-        formset.save()
-        audit(request.user, "schedule", "Content schedule", "Updated category enablement, priority and duration settings.")
-        messages.success(request, "Content schedule saved.")
-        return redirect("system_settings")
-    return render(request, "signage/system_settings.html", {"formset": formset, "audit_entries": AuditLog.objects.select_related("actor")[:40], "categories": ContentSchedule.CATEGORY_CHOICES})
+    off_schedule, _ = DisplayOffSchedule.objects.get_or_create(pk=1)
+    off_form = DisplayOffScheduleForm(request.POST or None, instance=off_schedule, prefix="display_off")
+    if request.method == "POST":
+        schedules_valid = formset.is_valid()
+        off_schedule_valid = off_form.is_valid()
+        if schedules_valid and off_schedule_valid:
+            with transaction.atomic():
+                formset.save()
+                off_form.save()
+            audit(request.user, "schedule", "Content schedule", "Updated content rotation and display-off schedule.")
+            messages.success(request, "Schedule settings saved.")
+            return redirect("system_settings")
+    return render(request, "signage/system_settings.html", {"formset": formset, "off_form": off_form, "audit_entries": AuditLog.objects.select_related("actor")[:40], "categories": ContentSchedule.CATEGORY_CHOICES})
 
 @login_required
 def display_devices(request):
@@ -229,6 +236,33 @@ def full_screen_photos(request):
     })
 
 @login_required
+def holiday_calendar(request):
+    user = request.user
+    permissions = ("signage.view_displayholiday", "signage.add_displayholiday", "signage.delete_displayholiday")
+    if not any(user.has_perm(permission) for permission in permissions): raise PermissionDenied
+    if request.method == "POST" and request.POST.get("delete_holiday"):
+        if not user.has_perm("signage.delete_displayholiday"): raise PermissionDenied
+        holiday = get_object_or_404(DisplayHoliday, pk=request.POST["delete_holiday"])
+        label = str(holiday)
+        holiday.delete()
+        audit(user, "holiday", label, f"Removed holiday {label} from the display calendar.")
+        messages.success(request, f"{label} removed from the holiday calendar.")
+        return redirect("holiday_calendar")
+    form = DisplayHolidayForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if not user.has_perm("signage.add_displayholiday"): raise PermissionDenied
+        holiday = form.save()
+        audit(user, "holiday", holiday, f"Added {holiday} to the display holiday calendar.")
+        messages.success(request, f"{holiday} added to the display holiday calendar.")
+        return redirect("holiday_calendar")
+    return render(request, "signage/holiday_calendar.html", {
+        "form": form,
+        "holidays": DisplayHoliday.objects.all(),
+        "can_add": user.has_perm("signage.add_displayholiday"),
+        "can_delete": user.has_perm("signage.delete_displayholiday"),
+    })
+
+@login_required
 def backup_download(request):
     if not request.user.is_staff: raise PermissionDenied
     temp_dir = Path(tempfile.mkdtemp(prefix="odds-backup-"))
@@ -258,7 +292,7 @@ def display_feed(request, device_id=None, category_filter=None):
     return response
 
 def service_worker(request):
-    js = """const CACHE='odds-display-v13';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/'])).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()).then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(tabs=>Promise.all(tabs.filter(tab=>new URL(tab.url).pathname.startsWith('/display/')).map(tab=>tab.navigate(tab.url))))));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
+    js = """const CACHE='odds-display-v15';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/display/'])).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('odds-display-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()).then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(tabs=>Promise.all(tabs.filter(tab=>new URL(tab.url).pathname.startsWith('/display/')).map(tab=>tab.navigate(tab.url))))));self.addEventListener('message',e=>{if(e.data?.type==='CACHE_URL'&&e.data.url)e.waitUntil(caches.open(CACHE).then(c=>c.add(e.data.url).catch(()=>{})))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=new URL(e.request.url);if(u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&(u.pathname.startsWith('/display/')||u.pathname.startsWith('/media/')||u.pathname.startsWith('/static/'))&&!u.pathname.endsWith('.json')){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request)));});"""
     return HttpResponse(js, content_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 def health(request):
     try:

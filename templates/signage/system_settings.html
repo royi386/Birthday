@@ -1,1 +1,22 @@
-{% extends 'base.html' %}{% block title %}System settings{% endblock %}{% block content %}<div class="page-heading"><div><p class="eyebrow">SCHEDULER & OPERATIONS</p><h1>System settings</h1><p class="muted">Enable content categories, set their relative order and slide durations.</p></div><a class="button secondary" href="{% url 'backup_download' %}">Download backup</a></div><form method="post" class="panel">{% csrf_token %}{{ formset.management_form }}<div class="table-wrap"><table><thead><tr><th>Content category</th><th>Enabled</th><th>Priority</th><th>Seconds per slide</th></tr></thead><tbody>{% for form in formset %}{{ form.id }}<tr><td><b>{{ form.instance.get_category_display }}</b>{% for error in form.non_field_errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ form.enabled }}</td><td>{{ form.priority }}</td><td>{{ form.duration }}</td></tr>{% endfor %}</tbody></table></div><div class="form-actions"><button class="button primary">Save schedule</button></div></form><section class="panel table-wrap"><div class="panel-head"><div><h2>Administrative audit trail</h2><p class="muted">Recent employee, content, schedule and backup actions.</p></div></div><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody>{% for entry in audit_entries %}<tr><td>{{ entry.created_at|date:'d M Y H:i' }}</td><td>{{ entry.actor|default:'System' }}</td><td>{{ entry.action }}</td><td>{{ entry.target }}</td><td>{{ entry.summary }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-cell">No administrative activity recorded.</td></tr>{% endfor %}</tbody></table></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}System settings{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">SCHEDULER & OPERATIONS</p><h1>System settings</h1><p class="muted">Set content rotation, the weekly screen-off period, and slide durations.</p></div><a class="button secondary" href="{% url 'backup_download' %}">Download backup</a></div>
+<form method="post" class="panel">
+  {% csrf_token %}{{ formset.management_form }}
+  <div class="table-wrap"><table><thead><tr><th>Content category</th><th>Enabled</th><th>Priority</th><th>Seconds per slide</th></tr></thead><tbody>
+    {% for form in formset %}{{ form.id }}<tr><td><b>{{ form.instance.get_category_display }}</b>{% for error in form.non_field_errors %}<small class="field-error">{{ error }}</small>{% endfor %}</td><td>{{ form.enabled }}</td><td>{{ form.priority }}</td><td>{{ form.duration }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <section class="display-off-settings"><h2>Display off schedule</h2><p class="muted">During this weekly time window, the display shows a black screen with a moving clock. Times use the timezone configured for the display.</p>
+    {% if off_form.non_field_errors %}<div class="notice error">{{ off_form.non_field_errors }}</div>{% endif %}
+    <label class="field check-field"><span>Enable scheduled display off</span>{{ off_form.enabled }}{% for error in off_form.enabled.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+    <div class="form-grid">
+      <label class="field"><span>From</span>{{ off_form.start_time }}{% for error in off_form.start_time.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+      <label class="field"><span>To</span>{{ off_form.end_time }}{% for error in off_form.end_time.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+    </div>
+    <div class="field"><span>Days</span>{{ off_form.days }}{% for error in off_form.days.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>
+  </section>
+  <div class="form-actions"><button class="button primary">Save schedule</button></div>
+</form>
+<section class="panel table-wrap"><div class="panel-head"><div><h2>Administrative audit trail</h2><p class="muted">Recent employee, content, schedule and backup actions.</p></div></div><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Details</th></tr></thead><tbody>{% for entry in audit_entries %}<tr><td>{{ entry.created_at|date:'d M Y H:i' }}</td><td>{{ entry.actor|default:'System' }}</td><td>{{ entry.action }}</td><td>{{ entry.target }}</td><td>{{ entry.summary }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-cell">No administrative activity recorded.</td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

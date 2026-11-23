@@ -1,6 +1,6 @@
 from django import forms
 from employees.forms import validate_image_upload
-from .models import Announcement, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage, ContentSchedule
+from .models import Announcement, DisplayDevice, DisplayHoliday, DisplayOffSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage, ContentSchedule
 
 class ImageValidationMixin:
     def clean(self):
@@ -95,3 +95,45 @@ class FullScreenPhotoForm(forms.Form):
         for photo in photos:
             validate_image_upload(photo, label="Photo")
         return photos
+
+class DisplayOffScheduleForm(forms.ModelForm):
+    days = forms.MultipleChoiceField(
+        choices=DisplayOffSchedule.WEEKDAY_CHOICES,
+        required=True,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    class Meta:
+        model = DisplayOffSchedule
+        fields = ["enabled", "start_time", "end_time"]
+        widgets = {
+            "start_time": forms.TimeInput(attrs={"type": "time"}),
+            "end_time": forms.TimeInput(attrs={"type": "time"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["days"].initial = [
+            day for day in (self.instance.days_of_week or "").split(",") if day
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get("start_time")
+        end = cleaned.get("end_time")
+        if start and end and start == end:
+            self.add_error("end_time", "Start and end times must be different.")
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.days_of_week = ",".join(sorted(self.cleaned_data["days"], key=int))
+        if commit:
+            instance.save()
+        return instance
+
+class DisplayHolidayForm(forms.ModelForm):
+    class Meta:
+        model = DisplayHoliday
+        fields = ["name", "date", "is_active"]
+        widgets = {"date": forms.DateInput(attrs={"type": "date"})}

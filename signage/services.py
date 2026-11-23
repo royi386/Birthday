@@ -1,9 +1,9 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from django.db.models import Q
 from django.utils import timezone
 from employees.models import DisplayConfiguration, Employee
-from .models import Announcement, ContentSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .models import Announcement, ContentSchedule, DisplayHoliday, DisplayOffSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 
 DEFAULT_SCHEDULE = {
     "birthday": (True, 100, 10), "anniversary": (True, 90, 10),
@@ -16,6 +16,53 @@ def office_today(config=None):
     config = config or DisplayConfiguration.objects.first()
     zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
     return timezone.localdate(timezone.now(), zone)
+
+def display_off_active(config=None, now=None):
+    schedule = DisplayOffSchedule.objects.first()
+    if not schedule or not schedule.enabled or schedule.start_time == schedule.end_time:
+        return False
+    config = config or DisplayConfiguration.objects.first()
+    zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
+    local_now = timezone.localtime(now or timezone.now(), zone)
+    local_time = local_now.time().replace(tzinfo=None)
+    try:
+        active_days = {int(value) for value in schedule.days_of_week.split(",") if value != ""}
+    except ValueError:
+        return False
+    if not active_days:
+        return False
+    if schedule.start_time < schedule.end_time:
+        return local_now.weekday() in active_days and schedule.start_time <= local_time < schedule.end_time
+    previous_day = (local_now.weekday() - 1) % 7
+    return (
+        (local_now.weekday() in active_days and local_time >= schedule.start_time)
+        or (previous_day in active_days and local_time < schedule.end_time)
+    )
+
+def next_display_off_change(config=None, now=None):
+    schedule = DisplayOffSchedule.objects.first()
+    if not schedule or not schedule.enabled or schedule.start_time == schedule.end_time:
+        return ""
+    config = config or DisplayConfiguration.objects.first()
+    zone = ZoneInfo(config.timezone_name) if config else ZoneInfo("Asia/Kolkata")
+    local_now = timezone.localtime(now or timezone.now(), zone)
+    try:
+        active_days = {int(value) for value in schedule.days_of_week.split(",") if value != ""}
+    except ValueError:
+        return ""
+    boundaries = []
+    for offset in range(-1, 8):
+        start_day = local_now.date() + timedelta(days=offset)
+        if start_day.weekday() not in active_days:
+            continue
+        start = datetime.combine(start_day, schedule.start_time, tzinfo=zone)
+        end_day = start_day if schedule.start_time < schedule.end_time else start_day + timedelta(days=1)
+        end = datetime.combine(end_day, schedule.end_time, tzinfo=zone)
+        if start > local_now:
+            boundaries.append(start)
+        if end > local_now:
+            boundaries.append(end)
+    return min(boundaries).isoformat() if boundaries else ""
 
 def display_config(device=None):
     if device and device.configuration_id:
@@ -52,6 +99,34 @@ def _employee_images(employee):
 def _base_item(category, title, message, image, duration, priority, **extra):
     return {"category": category, "title": title, "message": message, "image": image, "duration": duration, "priority": priority, **extra}
 
+def birthday_observances(on_date, config=None):
+    tomorrow = on_date + timedelta(days=1)
+    target_days = {on_date, tomorrow}
+    policy = config.leap_day_policy if config else "feb28"
+    target_months = {on_date.month, tomorrow.month}
+    if policy == "mar1" and any((day.month, day.day) == (3, 1) for day in target_days):
+        target_months.add(2)
+    holidays = set(DisplayHoliday.objects.filter(is_active=True, date__in=target_days).values_list("date", flat=True))
+    birthdays = Employee.objects.filter(
+        is_active=True, date_of_birth__month__in=target_months,
+    ).prefetch_related("gallery_photos").order_by("name", "employee_id")
+    result = []
+    for person in birthdays:
+        is_advance = False
+        for year in {on_date.year, tomorrow.year}:
+            leap_year = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+            month, day = person.date_of_birth.month, person.date_of_birth.day
+            if month == 2 and day == 29 and not leap_year:
+                month, day = (2, 28) if policy == "feb28" else (3, 1)
+            event_day = date(year, month, day)
+            if event_day in target_days:
+                advance = event_day.weekday() == 6 or event_day in holidays
+                if event_day - timedelta(days=1 if advance else 0) == on_date:
+                    is_advance = advance
+                    result.append((person, is_advance))
+                    break
+    return result
+
 def build_display_items(config=None, device=None, category_filter=None):
     config = config or display_config(device)
     today = office_today(config)
@@ -61,19 +136,18 @@ def build_display_items(config=None, device=None, category_filter=None):
         buckets = {key: items for key, items in buckets.items() if key == category_filter}
 
     if "birthday" in buckets:
-        leap_year = today.year % 4 == 0 and (today.year % 100 != 0 or today.year % 400 == 0)
-        policy = config.leap_day_policy if config else "feb28"
-        if not leap_year and policy == "mar1" and (today.month, today.day) == (3, 1):
-            birthdays = Employee.objects.filter(is_active=True).filter(Q(date_of_birth__month=3, date_of_birth__day=1) | Q(date_of_birth__month=2, date_of_birth__day=29)).prefetch_related("gallery_photos").order_by("name", "employee_id")
-        else:
-            birthdays = Employee.objects.filter(is_active=True, date_of_birth__month=today.month).prefetch_related("gallery_photos").order_by("name", "employee_id")
-        for person in birthdays:
-            matches = person.date_of_birth.day == today.day
-            if person.date_of_birth.month == 2 and person.date_of_birth.day == 29 and not leap_year:
-                matches = (today.month, today.day) == ((2, 28) if policy == "feb28" else (3, 1))
-            if matches:
-                for image in _employee_images(person):
-                    buckets["birthday"].append(_base_item("birthday", "Happy Birthday!", config.birthday_greeting if config else "Many many happy returns of the day!", image, schedules["birthday"].duration, 100, name=person.name, designation=person.designation, section=person.section, person=True, celebration_variant=((person.pk - 1) % 4) + 1))
+        for person, advance in birthday_observances(today, config):
+            for image in _employee_images(person):
+                slide = _base_item(
+                    "birthday", "Advance Happy Birthday!" if advance else "Happy Birthday!",
+                    config.birthday_greeting if config else "Many many happy returns of the day!",
+                    image, schedules["birthday"].duration, 100,
+                    name=person.name, designation=person.designation, section=person.section,
+                    person=True, celebration_variant=((person.pk - 1) % 4) + 1,
+                )
+                if advance:
+                    slide.update({"is_advance": True, "subcategory": "Advance wishes"})
+                buckets["birthday"].append(slide)
 
     if "anniversary" in buckets and config:
         try: milestones = {int(value.strip()) for value in config.anniversary_milestones.split(",") if value.strip()}
@@ -156,6 +230,9 @@ def display_payload(config=None, device=None, category_filter=None):
         "transition": config.transition if config else "fade",
         "duration": config.slide_duration if config else 10,
         "refresh_interval": config.refresh_interval if config else 60,
+        "timezone_name": config.timezone_name if config else "Asia/Kolkata",
+        "display_off": display_off_active(config),
+        "next_display_off_change": next_display_off_change(config),
         "logo": _image(config.logo) if config else "",
         "background": _image(config.background_image) if config else "",
         "empty_title": config.empty_title if config else "Good things happen together.",

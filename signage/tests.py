@@ -1,16 +1,18 @@
 import tempfile
 from io import BytesIO
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 from django.contrib.auth.models import Permission, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from employees.models import DisplayConfiguration, Employee, EmployeePhoto
-from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
-from .services import build_display_items, display_payload, upcoming_anniversaries
+from .forms import DisplayOffScheduleForm
+from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, DisplayHoliday, DisplayOffSchedule, FullScreenPhoto, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
+from .services import build_display_items, display_off_active, display_payload, upcoming_anniversaries
 
 class SchedulerTests(TestCase):
     def setUp(self):
@@ -34,12 +36,14 @@ class SchedulerTests(TestCase):
         self.assertLess(categories.index("birthday"), categories.index("safety"))
         self.assertEqual(result[0]["name"], "Birthday Person")
 
-    @patch("signage.services.office_today", return_value=date(2026, 3, 1))
+    @patch("signage.services.office_today", return_value=date(2026, 2, 28))
     def test_leap_day_policy_can_shift_birthday_to_march_first(self, _today):
         self.config.leap_day_policy = "mar1"; self.config.save()
         Employee.objects.create(employee_id="LEAP1", name="Leap Employee", date_of_birth=date(2000, 2, 29))
         items = build_display_items(self.config)
         self.assertEqual([item["name"] for item in items if item["category"] == "birthday"], ["Leap Employee"])
+        birthday = next(item for item in items if item["category"] == "birthday")
+        self.assertEqual(birthday["title"], "Advance Happy Birthday!")
 
     @patch("signage.services.office_today", return_value=date(2026, 3, 1))
     def test_leap_day_policy_applies_to_work_anniversaries(self, _today):
@@ -122,6 +126,51 @@ class SchedulerTests(TestCase):
         self.assertTrue(all(item["image"].startswith("/media/full_screen_photos/") for item in slides))
         self.assertEqual({item["duration"] for item in slides}, {10})
 
+    @patch("signage.services.office_today", return_value=date(2026, 11, 14))
+    def test_sunday_birthday_is_shown_in_advance_on_saturday_only(self, _today):
+        Employee.objects.create(employee_id="SUNDAY1", name="Sunday Birthday", date_of_birth=date(1990, 11, 15))
+        slides = [item for item in build_display_items(self.config) if item["category"] == "birthday"]
+        self.assertEqual(len(slides), 1)
+        self.assertEqual(slides[0]["title"], "Advance Happy Birthday!")
+        self.assertTrue(slides[0]["is_advance"])
+        with patch("signage.services.office_today", return_value=date(2026, 11, 15)):
+            self.assertFalse(any(item["category"] == "birthday" for item in build_display_items(self.config)))
+
+    @patch("signage.services.office_today", return_value=date(2026, 11, 15))
+    def test_holiday_birthday_moves_to_the_day_before(self, _today):
+        Employee.objects.create(employee_id="HOLIDAY1", name="Holiday Birthday", date_of_birth=date(1990, 11, 16))
+        DisplayHoliday.objects.create(name="Observed holiday", date=date(2026, 11, 16))
+        birthday = next(item for item in build_display_items(self.config) if item["category"] == "birthday")
+        self.assertEqual(birthday["title"], "Advance Happy Birthday!")
+        self.assertEqual(birthday["subcategory"], "Advance wishes")
+
+    def test_display_off_schedule_handles_overnight_ranges_and_selected_days(self):
+        schedule = DisplayOffSchedule.objects.get(pk=1)
+        schedule.enabled = True
+        schedule.start_time = datetime.strptime("22:00", "%H:%M").time()
+        schedule.end_time = datetime.strptime("06:00", "%H:%M").time()
+        schedule.days_of_week = "0"
+        schedule.save()
+        zone = ZoneInfo("Asia/Kolkata")
+        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 23, 23, 0, tzinfo=zone)))
+        self.assertTrue(display_off_active(self.config, datetime(2026, 11, 24, 5, 59, tzinfo=zone)))
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 6, 0, tzinfo=zone)))
+        self.assertFalse(display_off_active(self.config, datetime(2026, 11, 24, 23, 0, tzinfo=zone)))
+
+    def test_display_off_schedule_form_saves_time_and_weekdays(self):
+        schedule = DisplayOffSchedule.objects.get(pk=1)
+        form = DisplayOffScheduleForm({
+            "display_off-enabled": "on",
+            "display_off-start_time": "22:30",
+            "display_off-end_time": "06:15",
+            "display_off-days": ["0", "1", "5"],
+        }, instance=schedule, prefix="display_off")
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertTrue(saved.enabled)
+        self.assertEqual(saved.start_time.strftime("%H:%M"), "22:30")
+        self.assertEqual(saved.days_of_week, "0,1,5")
+
     def test_content_can_be_targeted_to_one_display_configuration(self):
         other = DisplayConfiguration.objects.create(organization_name="Other Org", office_name="Remote Office")
         item = GeneralMessage.objects.create(title="Remote only", message="For remote office", starts_on=date(2026, 1, 1), ends_on=date(2030, 1, 1))
@@ -198,6 +247,12 @@ class SignageAdminFlowTests(TestCase):
         response = self.client.get(reverse("content_list", args=["safety"]))
         self.assertEqual(response.status_code, 403)
 
+    def test_system_settings_page_includes_weekly_display_off_controls(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="change_contentschedule"))
+        response = self.client.get(reverse("system_settings"))
+        self.assertContains(response, "Display off schedule")
+        self.assertContains(response, 'name="display_off-start_time"')
+
     def test_locomotive_type_can_be_created_and_audited(self):
         permission = Permission.objects.get(codename="add_locomotivetype")
         self.user.user_permissions.add(permission)
@@ -231,4 +286,19 @@ class SignageAdminFlowTests(TestCase):
             response = self.client.post(reverse("full_screen_photos"), {"remove_photos": [str(photo.pk)]})
             self.assertEqual(response.status_code, 302)
             self.assertEqual(FullScreenPhoto.objects.count(), 1)
+
+    def test_holiday_calendar_accepts_dates_and_allows_removal(self):
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="add_displayholiday"),
+            Permission.objects.get(codename="delete_displayholiday"),
+            Permission.objects.get(codename="view_displayholiday"),
+        )
+        response = self.client.post(reverse("holiday_calendar"), {
+            "name": "Founders Day", "date": "2026-12-01", "is_active": "on",
+        })
+        self.assertEqual(response.status_code, 302)
+        holiday = DisplayHoliday.objects.get(name="Founders Day")
+        response = self.client.post(reverse("holiday_calendar"), {"delete_holiday": holiday.pk})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(DisplayHoliday.objects.exists())
 

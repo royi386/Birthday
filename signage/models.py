@@ -1,5 +1,6 @@
 import uuid
 from datetime import timedelta
+from datetime import time as datetime_time
 from django.conf import settings
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
@@ -109,6 +110,41 @@ class FullScreenPhoto(models.Model):
         if self.photo:
             self.photo.delete(save=False)
         return super().delete(*args, **kwargs)
+
+class DisplayOffSchedule(models.Model):
+    WEEKDAY_CHOICES = [
+        ("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"),
+        ("3", "Thursday"), ("4", "Friday"), ("5", "Saturday"), ("6", "Sunday"),
+    ]
+    enabled = models.BooleanField(default=False)
+    start_time = models.TimeField(default=datetime_time(22, 0))
+    end_time = models.TimeField(default=datetime_time(6, 0))
+    days_of_week = models.CharField(max_length=20, default="0,1,2,3,4,5,6")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.start_time == self.end_time:
+            raise ValidationError({"end_time": "Start and end times must be different."})
+        try:
+            days = [int(value) for value in self.days_of_week.split(",") if value != ""]
+        except ValueError:
+            raise ValidationError({"days_of_week": "Select one or more valid weekdays."})
+        if not days or any(day < 0 or day > 6 for day in days):
+            raise ValidationError({"days_of_week": "Select one or more valid weekdays."})
+
+    def __str__(self): return "Weekly display-off schedule"
+
+class DisplayHoliday(models.Model):
+    name = models.CharField(max_length=120)
+    date = models.DateField(db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ["date", "name"]
+        constraints = [models.UniqueConstraint(fields=["name", "date"], name="unique_display_holiday_name_date")]
+
+    def __str__(self): return f"{self.date:%d %b %Y} — {self.name}"
 
 class DisplayDevice(models.Model):
     display_id = models.SlugField(max_length=48, unique=True)
