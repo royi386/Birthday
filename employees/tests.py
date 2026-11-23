@@ -1,13 +1,15 @@
 ﻿from datetime import date
 from io import BytesIO
 from io import StringIO
+import tempfile
 from unittest.mock import patch
 from django.contrib.auth.models import Permission, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils.datastructures import MultiValueDict
 from django.urls import reverse
-from .models import DisplayConfiguration, Employee
+from .models import DisplayConfiguration, Employee, EmployeePhoto
 from .forms import EmployeeForm
 from .views import birthdays_for, import_preview
 
@@ -145,6 +147,24 @@ class EmployeeAdminFlowTests(TestCase):
         employee.refresh_from_db()
         self.assertEqual(response.status_code, 302)
         self.assertFalse(employee.is_active)
+
+    def test_employee_form_saves_multiple_additional_photos(self):
+        image_data = BytesIO()
+        from PIL import Image
+        Image.new("RGB", (40, 40), "navy").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        uploads = MultiValueDict({"additional_photos": [
+            SimpleUploadedFile("first.jpg", jpeg, content_type="image/jpeg"),
+            SimpleUploadedFile("second.jpg", jpeg, content_type="image/jpeg"),
+        ]})
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            form = EmployeeForm(
+                data={"employee_id": "MULTI1", "name": "Photo Person", "date_of_birth": "1990-05-14", "is_active": "on"},
+                files=uploads,
+            )
+            self.assertTrue(form.is_valid(), form.errors)
+            employee = form.save()
+            self.assertEqual(employee.gallery_photos.count(), 2)
 
     def test_import_handles_600_employee_csv(self):
         self.allow("add_employee")

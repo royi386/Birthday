@@ -1,1 +1,16 @@
-{% extends 'base.html' %}{% block title %}{% if employee %}Edit{% else %}Add{% endif %} employee{% endblock %}{% block content %}<div class="page-heading"><div><p class="eyebrow">EMPLOYEE DIRECTORY</p><h1>{% if employee %}Edit employee{% else %}Add employee{% endif %}</h1><p class="muted">Birth year stays private and never appears on the public display.</p></div><a href="{% url 'employee_list' %}" class="button secondary">Back to directory</a></div><form method="post" enctype="multipart/form-data" class="panel form-panel">{% csrf_token %}{% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors }}</div>{% endif %}<div class="form-grid">{% for field in form %}<label class="field {% if field.name == 'is_active' %}check-field{% endif %}"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>{% endfor %}</div><div class="form-actions"><a class="button secondary" href="{% url 'employee_list' %}">Cancel</a><button class="button primary">Save employee</button></div></form>{% endblock %}
+﻿{% extends 'base.html' %}
+{% block title %}{% if employee %}Edit{% else %}Add{% endif %} employee{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">EMPLOYEE DIRECTORY</p><h1>{% if employee %}Edit employee{% else %}Add employee{% endif %}</h1><p class="muted">Birth year stays private and never appears on the public display.</p></div><a href="{% url 'employee_list' %}" class="button secondary">Back to directory</a></div>
+<form method="post" enctype="multipart/form-data" class="panel form-panel">
+{% csrf_token %}
+{% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors }}</div>{% endif %}
+{% if employee and employee.gallery_photos.exists %}
+<fieldset class="employee-gallery-editor"><legend>Additional photos</legend><p class="muted">Select any photos you want to remove.</p><div class="employee-gallery-grid">
+{% for photo in employee.gallery_photos.all %}<label class="employee-gallery-item"><input type="checkbox" name="delete_gallery_photos" value="{{ photo.pk }}">{% if photo.display_photo %}<img src="{{ photo.display_photo.url }}" alt="Photo of {{ employee.name }}">{% else %}<img src="{{ photo.photo.url }}" alt="Photo of {{ employee.name }}">{% endif %}<span>Remove</span></label>{% endfor %}
+</div>{% for error in form.delete_gallery_photos.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</fieldset>
+{% endif %}
+<div class="form-grid">{% for field in form %}{% if field.name != 'delete_gallery_photos' %}<label class="field {% if field.name == 'is_active' %}check-field{% endif %}"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>{% endif %}{% endfor %}</div>
+<div class="form-actions"><a href="{% url 'employee_list' %}" class="button secondary">Cancel</a><button class="button primary">Save employee</button></div>
+</form>
+{% endblock %}

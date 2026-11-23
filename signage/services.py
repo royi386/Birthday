@@ -37,6 +37,17 @@ def _image(field):
     try: return field.url if field else ""
     except (ValueError, OSError): return ""
 
+def _employee_images(employee):
+    if employee is None: return [""]
+    photos = [employee.display_photo or employee.photo]
+    photos.extend(photo.display_photo or photo.photo for photo in employee.gallery_photos.all())
+    images = []
+    for photo in photos:
+        image = _image(photo)
+        if image and image not in images:
+            images.append(image)
+    return images or [""]
+
 def _base_item(category, title, message, image, duration, priority, **extra):
     return {"category": category, "title": title, "message": message, "image": image, "duration": duration, "priority": priority, **extra}
 
@@ -52,15 +63,16 @@ def build_display_items(config=None, device=None, category_filter=None):
         leap_year = today.year % 4 == 0 and (today.year % 100 != 0 or today.year % 400 == 0)
         policy = config.leap_day_policy if config else "feb28"
         if not leap_year and policy == "mar1" and (today.month, today.day) == (3, 1):
-            birthdays = Employee.objects.filter(is_active=True).filter(Q(date_of_birth__month=3, date_of_birth__day=1) | Q(date_of_birth__month=2, date_of_birth__day=29)).order_by("name", "employee_id")
+            birthdays = Employee.objects.filter(is_active=True).filter(Q(date_of_birth__month=3, date_of_birth__day=1) | Q(date_of_birth__month=2, date_of_birth__day=29)).prefetch_related("gallery_photos").order_by("name", "employee_id")
         else:
-            birthdays = Employee.objects.filter(is_active=True, date_of_birth__month=today.month).order_by("name", "employee_id")
+            birthdays = Employee.objects.filter(is_active=True, date_of_birth__month=today.month).prefetch_related("gallery_photos").order_by("name", "employee_id")
         for person in birthdays:
             matches = person.date_of_birth.day == today.day
             if person.date_of_birth.month == 2 and person.date_of_birth.day == 29 and not leap_year:
                 matches = (today.month, today.day) == ((2, 28) if policy == "feb28" else (3, 1))
             if matches:
-                buckets["birthday"].append(_base_item("birthday", "Happy Birthday!", config.birthday_greeting if config else "Many many happy returns of the day!", _image(person.display_photo or person.photo), schedules["birthday"].duration, 100, name=person.name, designation=person.designation, section=person.section, person=True, celebration_variant=((person.pk - 1) % 4) + 1))
+                for image in _employee_images(person):
+                    buckets["birthday"].append(_base_item("birthday", "Happy Birthday!", config.birthday_greeting if config else "Many many happy returns of the day!", image, schedules["birthday"].duration, 100, name=person.name, designation=person.designation, section=person.section, person=True, celebration_variant=((person.pk - 1) % 4) + 1))
 
     if "anniversary" in buckets and config:
         try: milestones = {int(value.strip()) for value in config.anniversary_milestones.split(",") if value.strip()}
@@ -68,23 +80,25 @@ def build_display_items(config=None, device=None, category_filter=None):
         joined_filter = Q(date_of_joining__month=today.month)
         if today.year % 4 != 0 and config.leap_day_policy == "mar1" and (today.month, today.day) == (3, 1):
             joined_filter |= Q(date_of_joining__month=2, date_of_joining__day=29)
-        joined_people = Employee.objects.filter(is_active=True, date_of_joining__isnull=False).filter(joined_filter).order_by("name", "employee_id")
+        joined_people = Employee.objects.filter(is_active=True, date_of_joining__isnull=False).filter(joined_filter).prefetch_related("gallery_photos").order_by("name", "employee_id")
         for person in joined_people:
             years = today.year - person.date_of_joining.year
             if years < 1 or years not in milestones: continue
             day = person.date_of_joining.day
             leap_shift = day == 29 and person.date_of_joining.month == 2 and today.year % 4 != 0 and (today.month, today.day) == ((2, 28) if config.leap_day_policy == "feb28" else (3, 1))
             if day == today.day or leap_shift:
-                buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", _image(person.display_photo or person.photo), schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years, celebration_variant=((person.pk - 1) % 4) + 1))
+                for image in _employee_images(person):
+                    buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", image, schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years, celebration_variant=((person.pk - 1) % 4) + 1))
 
     now = timezone.now()
     if "recognition" in buckets:
-        qs = Recognition.objects.filter(is_active=True, starts_on__lte=today, ends_on__gte=today).filter(Q(employee__isnull=True) | Q(employee__is_active=True)).select_related("employee").order_by("-priority", "starts_on", "pk")
+        qs = Recognition.objects.filter(is_active=True, starts_on__lte=today, ends_on__gte=today).filter(Q(employee__isnull=True) | Q(employee__is_active=True)).select_related("employee").prefetch_related("employee__gallery_photos").order_by("-priority", "starts_on", "pk")
         for item in _is_configured_for(qs, "configurations", config):
             employee = item.employee
-            employee_image = _image(employee.display_photo or employee.photo) if employee else ""
             work_image = _image(item.photo)
-            buckets["recognition"].append(_base_item("recognition", item.title, item.message, employee_image or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=employee_image, work_image=work_image))
+            employee_images = _employee_images(employee)
+            for employee_image in employee_images:
+                buckets["recognition"].append(_base_item("recognition", item.title, item.message, employee_image or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=employee_image, work_image=work_image))
 
     if "announcement" in buckets:
         qs = Announcement.objects.filter(is_active=True, starts_at__lte=now, ends_at__gt=now).order_by("-priority", "starts_at", "pk")

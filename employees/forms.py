@@ -1,10 +1,36 @@
 from django import forms
 from django.utils import timezone
-from .models import DisplayConfiguration, Employee
+from .models import DisplayConfiguration, Employee, EmployeePhoto
 
 MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+class MultipleImageField(forms.FileField):
+    widget = MultipleFileInput
+
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+        return [super(MultipleImageField, self).clean(item, initial) for item in data]
+
 class EmployeeForm(forms.ModelForm):
+    additional_photos = MultipleImageField(
+        required=False,
+        label="Additional employee photos",
+        help_text="Select multiple JPEG, PNG or WebP images. Each file can be up to 10 MB.",
+        widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+    )
+    delete_gallery_photos = forms.MultipleChoiceField(
+        required=False,
+        label="Remove additional photos",
+        choices=(),
+        widget=forms.CheckboxSelectMultiple,
+    )
+
     class Meta:
         model = Employee
         fields = ["employee_id", "name", "designation", "section", "date_of_birth", "photo", "date_of_joining", "is_active"]
@@ -12,6 +38,28 @@ class EmployeeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["photo"].help_text = "JPEG, PNG or WebP image, up to 10 MB."
+        if self.instance and self.instance.pk:
+            self.fields["delete_gallery_photos"].choices = [
+                (str(photo.pk), photo.photo.name.rsplit("/", 1)[-1])
+                for photo in self.instance.gallery_photos.all()
+            ]
+
+    def clean_additional_photos(self):
+        photos = self.cleaned_data.get("additional_photos", [])
+        for photo in photos:
+            validate_image_upload(photo, label="Employee photo")
+        return photos
+
+    def save(self, commit=True):
+        employee = super().save(commit=commit)
+        if commit:
+            photo_ids = self.cleaned_data.get("delete_gallery_photos", [])
+            if photo_ids:
+                EmployeePhoto.objects.filter(employee=employee, pk__in=photo_ids).delete()
+            for photo in self.cleaned_data.get("additional_photos", []):
+                EmployeePhoto.objects.create(employee=employee, photo=photo)
+        return employee
+
     def clean_employee_id(self): return self.cleaned_data["employee_id"].strip()
 
     def clean_date_of_birth(self):

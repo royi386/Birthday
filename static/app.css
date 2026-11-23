@@ -16,3 +16,5 @@
 .recognition-admin-photos img{display:block;width:56px;height:48px;flex:none;object-fit:cover;border-radius:7px;background:#edf1f6}
 .recognition-admin-photos span{font-size:10px;color:var(--muted);line-height:1.25}
 .recognition-table-wrap td .inline{display:inline-block;margin-top:5px}
+
+.employee-gallery-editor{border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 22px}.employee-gallery-editor legend{font-weight:700;font-size:13px;padding:0 6px}.employee-gallery-editor>.muted{margin:0 0 14px}.employee-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}.employee-gallery-item{position:relative;display:grid;gap:6px;justify-items:start;font-size:11px;color:#627189}.employee-gallery-item input{position:absolute;top:7px;left:7px;z-index:1}.employee-gallery-item img{width:100%;height:110px;object-fit:cover;border-radius:8px;background:#edf1f6}.employee-gallery-item:has(input:checked) img{outline:2px solid #b94d4d}.employee-gallery-item:has(input:checked) span{color:#a33b3b}

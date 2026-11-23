@@ -1,12 +1,14 @@
 import tempfile
+from io import BytesIO
 from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth.models import Permission, User
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-from employees.models import DisplayConfiguration, Employee
+from employees.models import DisplayConfiguration, Employee, EmployeePhoto
 from .models import Announcement, AuditLog, ContentSchedule, DisplayDevice, GeneralMessage, LocomotiveType, Recognition, SafetyMessage
 from .services import build_display_items, display_payload, upcoming_anniversaries
 
@@ -73,6 +75,21 @@ class SchedulerTests(TestCase):
         SafetyMessage.objects.create(title="Safety duration", message="Read carefully", starts_on=date(2026, 11, 1), ends_on=date(2026, 11, 30))
         slide = next(item for item in build_display_items(self.config) if item["category"] == "safety")
         self.assertEqual(slide["duration"], 22)
+
+    @patch("signage.services.office_today", return_value=date(2026, 11, 13))
+    def test_birthday_slideshow_rotates_each_employee_photo(self, _today):
+        from PIL import Image
+        image_data = BytesIO()
+        Image.new("RGB", (40, 40), "navy").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            person = Employee.objects.create(employee_id="GALLERY1", name="Gallery Person", date_of_birth=date(1990, 11, 13))
+            EmployeePhoto.objects.create(employee=person, photo=SimpleUploadedFile("one.jpg", jpeg, content_type="image/jpeg"))
+            EmployeePhoto.objects.create(employee=person, photo=SimpleUploadedFile("two.jpg", jpeg, content_type="image/jpeg"))
+            slides = [item for item in build_display_items(self.config) if item["category"] == "birthday"]
+        self.assertEqual(len(slides), 2)
+        self.assertEqual({item["name"] for item in slides}, {"Gallery Person"})
+        self.assertNotEqual(slides[0]["image"], slides[1]["image"])
 
     @patch("signage.services.office_today", return_value=date(2026, 11, 13))
     def test_locomotive_population_is_daily_and_lowest_priority(self, _today):

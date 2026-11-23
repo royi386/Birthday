@@ -8,6 +8,12 @@ def employee_photo_path(instance, filename):
 def employee_display_photo_path(instance, filename):
     return f"employees/{instance.employee_id}/display/{Path(filename).name}"
 
+def gallery_photo_path(instance, filename):
+    return f"employees/{instance.employee.employee_id}/gallery/{Path(filename).name}"
+
+def gallery_display_photo_path(instance, filename):
+    return f"employees/{instance.employee.employee_id}/gallery/display/{Path(filename).name}"
+
 class Employee(models.Model):
     employee_id = models.CharField(max_length=40, unique=True, db_index=True)
     name = models.CharField(max_length=160)
@@ -44,6 +50,28 @@ class Employee(models.Model):
                 kwargs["update_fields"] = set(update_fields) | {"display_photo"}
         super().save(*args, **kwargs)
     def __str__(self): return f"{self.name} ({self.employee_id})"
+
+class EmployeePhoto(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="gallery_photos")
+    photo = models.ImageField(upload_to=gallery_photo_path, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])])
+    display_photo = models.ImageField(upload_to=gallery_display_photo_path, blank=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+    def save(self, *args, **kwargs):
+        uploaded_photo = getattr(self.photo, "_file", None) if self.photo else None
+        if uploaded_photo is not None:
+            from django.core.files.base import ContentFile
+            from .photo_processing import centered_face_jpeg
+            centered = centered_face_jpeg(uploaded_photo)
+            if centered:
+                filename = f"{Path(self.photo.name).stem}-centered-v2.jpg"
+                self.display_photo.save(filename, ContentFile(centered), save=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self): return f"Photo of {self.employee}"
 
 class DisplayConfiguration(models.Model):
     THEME_CHOICES = [("professional", "Professional Blue & Gold"), ("celebration", "Elegant Celebration"), ("minimal", "Minimal Corporate")]
