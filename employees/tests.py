@@ -11,6 +11,7 @@ from django.utils.datastructures import MultiValueDict
 from django.urls import reverse
 from .models import DisplayConfiguration, Employee, EmployeePhoto
 from .forms import EmployeeForm
+from signage.models import Recognition
 from .views import birthdays_for, import_preview
 
 class DemoDataCommandTests(TestCase):
@@ -81,6 +82,22 @@ class EmployeeAdminFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         employee.refresh_from_db()
         self.assertEqual((employee.photo_position_x, employee.photo_position_y, employee.photo_zoom), (63, 38, 210))
+
+    def test_employee_recognition_preview_renders_only_profile_and_recognition_photos(self):
+        from PIL import Image
+        image_data = BytesIO()
+        Image.new("RGB", (40, 40), "navy").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        self.allow("view_employee")
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            employee = Employee.objects.create(employee_id="RECOG2", name="Recognised Employee", date_of_birth=date(1990, 1, 1), photo=SimpleUploadedFile("profile.jpg", jpeg, content_type="image/jpeg"))
+            Recognition.objects.create(employee=employee, title="Good work", message="Thank you.", photo=SimpleUploadedFile("recognition.jpg", jpeg, content_type="image/jpeg"), starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31))
+            response = self.client.get(reverse("employee_display_preview", args=[employee.pk]))
+        self.assertEqual(response.status_code, 200)
+        recognition_slide = response.content.decode("utf-8").split('data-category="recognition"', 1)[1].split("</section>", 1)[0]
+        self.assertEqual(recognition_slide.count("<img"), 2)
+        self.assertEqual(recognition_slide.count('class="recognition-photo'), 2)
+        self.assertNotIn('class="visual', recognition_slide)
 
     def test_section_csv_column_imports_and_legacy_department_is_accepted(self):
         valid, errors = import_preview([{"employee_id": "SECTION1", "name": "Taylor Reed", "section": "Traction", "date_of_birth": "1991-03-12"}])
