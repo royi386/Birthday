@@ -8,6 +8,8 @@
 .recognition-table-wrap th:nth-child(2){width:15%}
 .recognition-table-wrap th:nth-child(3){width:18%}
 .recognition-table-wrap th:nth-child(4){width:7%}
+
+@media(min-width:701px){.sidebar nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;scrollbar-width:thin;scrollbar-color:#536784 transparent}.sidebar nav::-webkit-scrollbar{width:6px}.sidebar nav::-webkit-scrollbar-thumb{background:#536784;border-radius:6px}}
 .recognition-table-wrap th:nth-child(5){width:10%}
 .recognition-table-wrap th:nth-child(6){width:12%}
 .recognition-table-wrap th:nth-child(7){width:13%}
