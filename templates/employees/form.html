@@ -1,7 +1,7 @@
 ﻿{% extends 'base.html' %}
 {% block title %}{% if employee %}Edit{% else %}Add{% endif %} employee{% endblock %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">EMPLOYEE DIRECTORY</p><h1>{% if employee %}Edit employee{% else %}Add employee{% endif %}</h1><p class="muted">Birth year stays private and never appears on the public display.</p></div><a href="{% url 'employee_list' %}" class="button secondary">Back to directory</a></div>
+<div class="page-heading"><div><p class="eyebrow">EMPLOYEE DIRECTORY</p><h1>{% if employee %}Edit employee{% else %}Add employee{% endif %}</h1><p class="muted">Birth year stays private and never appears on the public display.</p></div><div class="actions">{% if employee %}<a href="{% url 'employee_display_preview' employee.pk %}" target="_blank" class="button secondary">Preview display</a>{% endif %}<a href="{% url 'employee_list' %}" class="button secondary">Back to directory</a></div></div>
 <form method="post" enctype="multipart/form-data" class="panel form-panel">
 {% csrf_token %}
 {% if form.non_field_errors %}<div class="notice error">{{ form.non_field_errors }}</div>{% endif %}

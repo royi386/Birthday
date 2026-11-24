@@ -11,8 +11,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .forms import DisplayConfigurationForm, EmployeeForm
 from .models import DisplayConfiguration, Employee
-from signage.models import Announcement, AuditLog
-from signage.services import birthday_observances, office_today, upcoming_anniversaries
+from signage.models import Announcement, AuditLog, Recognition
+from signage.services import birthday_observances, office_today, upcoming_anniversaries, _employee_images, _image
 
 def today_local(): return office_today()
 def birthdays_for(day, config=None):
@@ -46,6 +46,31 @@ def employee_edit(request, pk=None):
     if request.method == "POST" and form.is_valid():
         saved = form.save(); AuditLog.objects.create(actor=request.user, action="update" if employee else "create", target=str(saved), summary=f"Employee {'updated' if employee else 'created'}: {saved.name} ({saved.employee_id})"); messages.success(request, "Employee saved."); return redirect("employee_list")
     return render(request, "employees/form.html", {"form": form, "employee": employee})
+
+@login_required
+@permission_required("employees.view_employee", raise_exception=True)
+def employee_display_preview(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    config = DisplayConfiguration.objects.first()
+    today = today_local()
+    duration = config.slide_duration if config else 10
+    images = _employee_images(employee)
+    items = []
+    for index, image in enumerate(images):
+        items.append({"category": "birthday", "key": f"birthday:{index}", "title": "Happy Birthday!", "message": config.birthday_greeting if config else "Many many happy returns of the day!", "image": image, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "celebration_variant": ((employee.pk - 1) % 4) + 1})
+    years = max(1, today.year - employee.date_of_joining.year) if employee.date_of_joining else 1
+    for index, image in enumerate(images):
+        items.append({"category": "anniversary", "key": f"anniversary:{index}", "title": f"{years} Year{'s' if years != 1 else ''} of Service", "message": f"Congratulations to {employee.name} on this wonderful milestone!", "image": image, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "years": years, "celebration_variant": ((employee.pk - 1) % 4) + 1})
+    recognitions = Recognition.objects.filter(employee=employee).order_by("-priority", "starts_on", "pk")
+    for recognition in recognitions:
+        work_image = _image(recognition.photo)
+        for index, image in enumerate(images):
+            items.append({"category": "recognition", "key": f"recognition:{recognition.pk}:{index}", "title": recognition.title, "message": recognition.message, "image": image, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": image, "work_image": work_image})
+    if not recognitions:
+        for index, image in enumerate(images):
+            items.append({"category": "recognition", "key": f"recognition:sample:{index}", "title": "Recognition preview", "message": "Add an employee recognition entry to preview its message and work photo here.", "image": image, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": image, "work_image": ""})
+    date_formats = {"weekday": "%A, %d %B %Y", "short": "%d/%m/%Y", "long": "%B %d, %Y"}
+    return render(request, "display/birthdays.html", {"items": items, "employee_preview": True, "employee": employee, "date": today.strftime(date_formats.get(config.date_format, "%A, %d %B %Y") if config else "%A, %d %B %Y"), "office": config.office_name if config else "Your Office", "organization": config.organization_name if config else "Office Digital Display", "theme": config.theme if config else "professional", "transition": config.transition if config else "fade", "duration": duration, "refresh_interval": 60, "timezone_name": config.timezone_name if config else "Asia/Kolkata", "display_off": False, "logo": _image(config.logo) if config else "", "background": _image(config.background_image) if config else ""})
 
 @login_required
 @permission_required("employees.change_employee", raise_exception=True)
