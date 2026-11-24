@@ -100,6 +100,15 @@
 .theme-minimal .slide-fleet .fleet-page>h1,.theme-minimal .slide-fleet .fleet-card h2,.theme-minimal .slide-fleet .fleet-card p{color:#172b46}
 .theme-minimal .slide-fleet .fleet-circle{border-color:#172b46}
 
+/* Preserve the employee portrait size while giving recognition photos a larger, uncropped frame. */
+.slide-recognition{padding-left:4vw;padding-right:4vw;gap:clamp(18px,2.5vw,40px)}
+.slide-recognition .slide-layout{max-width:94vw;gap:clamp(18px,2.5vw,40px)}
+.recognition-gallery{grid-template-columns:minmax(0,min(20vw,35vh)) minmax(0,1fr);width:min(64vw,108vh);gap:clamp(12px,1.6vw,26px)}
+.work-photo img,.work-photo .recognition-placeholder{height:min(38vw,62vh)}
+.work-photo img{object-fit:contain;background:#0b1624}
+@media(max-width:1200px) and (min-aspect-ratio:1/1){.recognition-gallery{width:min(54vw,94vh)}.work-photo img,.work-photo .recognition-placeholder{height:min(34vw,56vh)}}
+@media(max-aspect-ratio:1/1){.slide-recognition{flex-direction:column;gap:3vh}.slide-recognition .slide-layout{max-width:92vw;gap:3vh}.recognition-gallery{grid-template-columns:minmax(0,min(38vw,28vh)) minmax(0,1fr);width:min(88vw,82vh);gap:10px}.work-photo img,.work-photo .recognition-placeholder{height:min(42vh,66vw)}}
+
 /* Keep the complete locomotive population inside the display viewport. */
 .slide-fleet{padding:4vh 4vw 12vh}
 .fleet-page{min-height:0;gap:clamp(8px,1.5vh,20px)}

@@ -91,8 +91,9 @@ class EmployeeAdminFlowTests(TestCase):
         self.allow("view_employee")
         with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
             employee = Employee.objects.create(employee_id="RECOG2", name="Recognised Employee", date_of_birth=date(1990, 1, 1), photo=SimpleUploadedFile("profile.jpg", jpeg, content_type="image/jpeg"))
-            Recognition.objects.create(employee=employee, title="Good work", message="Thank you.", photo=SimpleUploadedFile("recognition.jpg", jpeg, content_type="image/jpeg"), starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31))
+            recognition = Recognition.objects.create(employee=employee, title="Good work", message="Thank you.", photo=SimpleUploadedFile("recognition.jpg", jpeg, content_type="image/jpeg"), starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31))
             response = self.client.get(reverse("employee_display_preview", args=[employee.pk]))
+            self.assertEqual(recognition.photo_zoom, 100)
         self.assertEqual(response.status_code, 200)
         recognition_slide = response.content.decode("utf-8").split('data-category="recognition"', 1)[1].split("</section>", 1)[0]
         self.assertEqual(recognition_slide.count("<img"), 2)
