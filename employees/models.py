@@ -1,4 +1,4 @@
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from pathlib import Path
 
@@ -22,6 +22,8 @@ class Employee(models.Model):
     date_of_birth = models.DateField()
     photo = models.ImageField(upload_to=employee_photo_path, blank=True, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])])
     display_photo = models.ImageField(upload_to=employee_display_photo_path, blank=True, editable=False)
+    photo_position_x = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    photo_position_y = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
     date_of_joining = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -55,6 +57,8 @@ class EmployeePhoto(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="gallery_photos")
     photo = models.ImageField(upload_to=gallery_photo_path, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])])
     display_photo = models.ImageField(upload_to=gallery_display_photo_path, blank=True, editable=False)
+    photo_position_x = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    photo_position_y = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

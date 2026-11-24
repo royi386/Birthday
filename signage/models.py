@@ -24,6 +24,8 @@ class Recognition(models.Model):
     title = models.CharField(max_length=180)
     message = models.TextField(max_length=1600)
     photo = models.ImageField(upload_to="recognition/", blank=True, validators=[IMAGE_VALIDATOR])
+    photo_position_x = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    photo_position_y = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
     starts_on = models.DateField(db_index=True)
     ends_on = models.DateField(db_index=True)
     priority = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(1), MaxValueValidator(100)])

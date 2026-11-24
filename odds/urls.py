@@ -16,6 +16,7 @@ urlpatterns = [
     path("employees/add/", employee_views.employee_edit, name="employee_add"),
     path("employees/<int:pk>/edit/", employee_views.employee_edit, name="employee_edit"),
     path("employees/<int:pk>/preview/", employee_views.employee_display_preview, name="employee_display_preview"),
+    path("employees/<int:pk>/photo-alignment/", employee_views.employee_photo_alignment, name="employee_photo_alignment"),
     path("employees/<int:pk>/deactivate/", employee_views.employee_deactivate, name="employee_deactivate"),
     path("employees/template.csv", employee_views.employee_template, name="employee_template"),
     path("employees/template.xlsx", employee_views.employee_template_xlsx, name="employee_template_xlsx"),
