@@ -69,6 +69,19 @@ class EmployeeAdminFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(EmployeeForm().fields["section"].label, "Section")
 
+    def test_employee_preview_exposes_zoom_controls_and_saves_zoom(self):
+        employee = Employee.objects.create(employee_id="ZOOM1", name="Zoom Person", date_of_birth=date(1990, 1, 1))
+        self.allow("view_employee")
+        preview = self.client.get(reverse("employee_display_preview", args=[employee.pk]))
+        self.assertEqual(preview.status_code, 200)
+        self.assertContains(preview, 'id="zoom-in"')
+        self.assertContains(preview, 'id="zoom-out"')
+        self.assertContains(preview, 'id="adjust-target"')
+        response = self.client.post(reverse("employee_photo_alignment", args=[employee.pk]), {"alignments": '[{"kind":"employee","id":%d,"x":63,"y":38,"zoom":210}]' % employee.pk})
+        self.assertEqual(response.status_code, 200)
+        employee.refresh_from_db()
+        self.assertEqual((employee.photo_position_x, employee.photo_position_y, employee.photo_zoom), (63, 38, 210))
+
     def test_section_csv_column_imports_and_legacy_department_is_accepted(self):
         valid, errors = import_preview([{"employee_id": "SECTION1", "name": "Taylor Reed", "section": "Traction", "date_of_birth": "1991-03-12"}])
         self.assertEqual(errors, [])

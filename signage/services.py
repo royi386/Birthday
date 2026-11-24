@@ -100,17 +100,22 @@ def _image(field):
 def _employee_images(employee):
     return [record["image"] for record in _employee_photo_records(employee)]
 
+def _employee_profile_photo_record(employee):
+    if employee is None:
+        return {"image": "", "photo_kind": "", "photo_id": "", "photo_position_x": 50, "photo_position_y": 50, "photo_zoom": 160}
+    return {"image": _image(employee.photo), "photo_kind": "employee", "photo_id": employee.pk, "photo_position_x": employee.photo_position_x, "photo_position_y": employee.photo_position_y, "photo_zoom": employee.photo_zoom}
+
 def _employee_photo_records(employee):
-    if employee is None: return [{"image": "", "photo_kind": "", "photo_id": "", "photo_position_x": 50, "photo_position_y": 50}]
-    photos = [(employee.photo, "employee", employee.pk, employee.photo_position_x, employee.photo_position_y)]
-    photos.extend((photo.photo, "gallery", photo.pk, photo.photo_position_x, photo.photo_position_y) for photo in employee.gallery_photos.all())
+    if employee is None: return [_employee_profile_photo_record(None)]
+    photos = [(employee.photo, "employee", employee.pk, employee.photo_position_x, employee.photo_position_y, employee.photo_zoom)]
+    photos.extend((photo.photo, "gallery", photo.pk, photo.photo_position_x, photo.photo_position_y, photo.photo_zoom) for photo in employee.gallery_photos.all())
     records, seen = [], set()
-    for field, kind, photo_id, x, y in photos:
+    for field, kind, photo_id, x, y, zoom in photos:
         image = _image(field)
         if image and image not in seen:
-            records.append({"image": image, "photo_kind": kind, "photo_id": photo_id, "photo_position_x": x, "photo_position_y": y})
+            records.append({"image": image, "photo_kind": kind, "photo_id": photo_id, "photo_position_x": x, "photo_position_y": y, "photo_zoom": zoom})
             seen.add(image)
-    return records or [{"image": "", "photo_kind": "employee", "photo_id": employee.pk, "photo_position_x": employee.photo_position_x, "photo_position_y": employee.photo_position_y}]
+    return records or [_employee_profile_photo_record(employee)]
 
 def _base_item(category, title, message, image, duration, priority, **extra):
     return {"category": category, "title": title, "message": message, "image": image, "duration": duration, "priority": priority, **extra}
@@ -160,7 +165,7 @@ def build_display_items(config=None, device=None, category_filter=None):
                     photo["image"], schedules["birthday"].duration, 100,
                     name=person.name, designation=person.designation, section=person.section,
                     person=True, celebration_variant=((person.pk - 1) % 4) + 1,
-                    photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"],
+                    photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"], photo_zoom=photo["photo_zoom"],
                 )
                 if advance:
                     slide.update({"is_advance": True, "subcategory": "Advance wishes"})
@@ -179,8 +184,8 @@ def build_display_items(config=None, device=None, category_filter=None):
             day = person.date_of_joining.day
             leap_shift = day == 29 and person.date_of_joining.month == 2 and today.year % 4 != 0 and (today.month, today.day) == ((2, 28) if config.leap_day_policy == "feb28" else (3, 1))
             if day == today.day or leap_shift:
-                for photo in _employee_photo_records(person):
-                    buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", photo["image"], schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years, celebration_variant=((person.pk - 1) % 4) + 1, photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"]))
+                photo = _employee_profile_photo_record(person)
+                buckets["anniversary"].append(_base_item("anniversary", f"{years} Year{'s' if years != 1 else ''} of Service", f"Congratulations to {person.name} on this wonderful milestone!", photo["image"], schedules["anniversary"].duration, 90, name=person.name, designation=person.designation, section=person.section, person=True, years=years, celebration_variant=((person.pk - 1) % 4) + 1, photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"], photo_zoom=photo["photo_zoom"]))
 
     now = timezone.now()
     if "recognition" in buckets:
@@ -188,9 +193,8 @@ def build_display_items(config=None, device=None, category_filter=None):
         for item in _is_configured_for(qs, "configurations", config):
             employee = item.employee
             work_image = _image(item.photo)
-            employee_photos = _employee_photo_records(employee)
-            for photo in employee_photos:
-                buckets["recognition"].append(_base_item("recognition", item.title, item.message, photo["image"] or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=photo["image"], work_image=work_image, photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"], recognition_id=item.pk, work_photo_position_x=item.photo_position_x, work_photo_position_y=item.photo_position_y))
+            photo = _employee_profile_photo_record(employee)
+            buckets["recognition"].append(_base_item("recognition", item.title, item.message, photo["image"] or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=photo["image"], work_image=work_image, photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"], photo_zoom=photo["photo_zoom"], recognition_id=item.pk, work_photo_position_x=item.photo_position_x, work_photo_position_y=item.photo_position_y, work_photo_zoom=item.photo_zoom))
 
     if "announcement" in buckets:
         qs = Announcement.objects.filter(is_active=True, starts_at__lte=now, ends_at__gt=now).order_by("-priority", "starts_at", "pk")

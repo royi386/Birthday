@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from .forms import DisplayConfigurationForm, EmployeeForm
 from .models import DisplayConfiguration, Employee
 from signage.models import Announcement, AuditLog, Recognition
-from signage.services import birthday_observances, office_today, upcoming_anniversaries, _employee_photo_records, _image
+from signage.services import birthday_observances, office_today, upcoming_anniversaries, _employee_photo_records, _employee_profile_photo_record, _image
 
 def today_local(): return office_today()
 def birthdays_for(day, config=None):
@@ -58,17 +58,15 @@ def employee_display_preview(request, pk):
     items = []
     for index, photo in enumerate(photos):
         items.append({"category": "birthday", "key": f"birthday:{index}", "title": "Happy Birthday!", "message": config.birthday_greeting if config else "Many many happy returns of the day!", **photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "celebration_variant": ((employee.pk - 1) % 4) + 1})
+    profile_photo = _employee_profile_photo_record(employee)
     years = max(1, today.year - employee.date_of_joining.year) if employee.date_of_joining else 1
-    for index, photo in enumerate(photos):
-        items.append({"category": "anniversary", "key": f"anniversary:{index}", "title": f"{years} Year{'s' if years != 1 else ''} of Service", "message": f"Congratulations to {employee.name} on this wonderful milestone!", **photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "years": years, "celebration_variant": ((employee.pk - 1) % 4) + 1})
+    items.append({"category": "anniversary", "key": "anniversary:profile", "title": f"{years} Year{'s' if years != 1 else ''} of Service", "message": f"Congratulations to {employee.name} on this wonderful milestone!", **profile_photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "years": years, "celebration_variant": ((employee.pk - 1) % 4) + 1})
     recognitions = Recognition.objects.filter(employee=employee).order_by("-priority", "starts_on", "pk")
     for recognition in recognitions:
         work_image = _image(recognition.photo)
-        for index, photo in enumerate(photos):
-            items.append({"category": "recognition", "key": f"recognition:{recognition.pk}:{index}", "title": recognition.title, "message": recognition.message, **photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": photo["image"], "work_image": work_image, "recognition_id": recognition.pk, "work_photo_position_x": recognition.photo_position_x, "work_photo_position_y": recognition.photo_position_y})
+        items.append({"category": "recognition", "key": f"recognition:{recognition.pk}", "title": recognition.title, "message": recognition.message, **profile_photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": profile_photo["image"], "work_image": work_image, "recognition_id": recognition.pk, "work_photo_position_x": recognition.photo_position_x, "work_photo_position_y": recognition.photo_position_y, "work_photo_zoom": recognition.photo_zoom})
     if not recognitions:
-        for index, photo in enumerate(photos):
-            items.append({"category": "recognition", "key": f"recognition:sample:{index}", "title": "Recognition preview", "message": "Add an employee recognition entry to preview its message and work photo here.", **photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": photo["image"], "work_image": ""})
+        items.append({"category": "recognition", "key": "recognition:sample", "title": "Recognition preview", "message": "Add an employee recognition entry to preview its message and work photo here.", **profile_photo, "duration": duration, "name": employee.name, "designation": employee.designation, "section": employee.section, "person": True, "employee_image": profile_photo["image"], "work_image": ""})
     date_formats = {"weekday": "%A, %d %B %Y", "short": "%d/%m/%Y", "long": "%B %d, %Y"}
     return render(request, "display/birthdays.html", {"items": items, "employee_preview": True, "employee": employee, "date": today.strftime(date_formats.get(config.date_format, "%A, %d %B %Y") if config else "%A, %d %B %Y"), "office": config.office_name if config else "Your Office", "organization": config.organization_name if config else "Office Digital Display", "theme": config.theme if config else "professional", "transition": config.transition if config else "fade", "duration": duration, "refresh_interval": 60, "timezone_name": config.timezone_name if config else "Asia/Kolkata", "display_off": False, "logo": _image(config.logo) if config else "", "background": _image(config.background_image) if config else ""})
 
@@ -93,8 +91,11 @@ def employee_photo_alignment(request, pk):
                 target = get_object_or_404(EmployeePhoto, pk=photo_id, employee=employee)
             else:
                 target = get_object_or_404(Recognition, pk=photo_id, employee=employee)
+            zoom = int(update.get("zoom", target.photo_zoom))
+            if not 100 <= zoom <= 300: raise ValueError
             target.photo_position_x, target.photo_position_y = x, y
-            target.save(update_fields=["photo_position_x", "photo_position_y"])
+            target.photo_zoom = zoom
+            target.save(update_fields=["photo_position_x", "photo_position_y", "photo_zoom"])
     except (TypeError, ValueError, AttributeError):
         return JsonResponse({"ok": False, "error": "Invalid photo alignment."}, status=400)
     return JsonResponse({"ok": True})

@@ -96,6 +96,30 @@ class SchedulerTests(TestCase):
         self.assertNotEqual(slides[0]["image"], slides[1]["image"])
 
     @patch("signage.services.office_today", return_value=date(2026, 11, 13))
+    def test_gallery_photos_are_exclusive_to_birthday_slides(self, _today):
+        from PIL import Image
+        image_data = BytesIO()
+        Image.new("RGB", (40, 40), "navy").save(image_data, format="JPEG")
+        jpeg = image_data.getvalue()
+        self.config.anniversary_milestones = "5"
+        self.config.save()
+        with tempfile.TemporaryDirectory() as media_dir, override_settings(MEDIA_ROOT=media_dir):
+            person = Employee.objects.create(employee_id="PROFILE1", name="Profile Person", date_of_birth=date(1990, 11, 13), date_of_joining=date(2021, 11, 13), photo=SimpleUploadedFile("profile.jpg", jpeg, content_type="image/jpeg"))
+            EmployeePhoto.objects.create(employee=person, photo=SimpleUploadedFile("extra.jpg", jpeg, content_type="image/jpeg"))
+            recognition = Recognition.objects.create(employee=person, title="Good work", message="Thank you.", starts_on=date(2026, 11, 1), ends_on=date(2026, 11, 30))
+            profile_url = person.photo.url
+            items = build_display_items(self.config)
+        birthdays = [item for item in items if item["category"] == "birthday"]
+        anniversaries = [item for item in items if item["category"] == "anniversary"]
+        recognitions = [item for item in items if item["category"] == "recognition"]
+        self.assertEqual(len(birthdays), 2)
+        self.assertEqual(len(anniversaries), 1)
+        self.assertEqual(anniversaries[0]["image"], profile_url)
+        self.assertEqual(len(recognitions), 1)
+        self.assertEqual(recognitions[0]["employee_image"], profile_url)
+        self.assertEqual(recognitions[0]["recognition_id"], recognition.pk)
+
+    @patch("signage.services.office_today", return_value=date(2026, 11, 13))
     def test_locomotive_population_is_daily_and_lowest_priority(self, _today):
         ContentSchedule.objects.filter(category="fleet").update(priority=1, duration=12)
         LocomotiveType.objects.create(name="WAP5", population=11)

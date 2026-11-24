@@ -7,55 +7,113 @@
   var status = document.getElementById("alignment-status");
   var xControl = document.getElementById("align-x");
   var yControl = document.getElementById("align-y");
+  var zoomLevel = document.getElementById("zoom-level");
+  var targetControl = document.getElementById("adjust-target");
   var pending = {};
   var active = 0;
   var rotation = null;
   var dragging = null;
 
-  function number(value) {
+  function number(value, fallback) {
     var result = parseFloat(value);
-    return isNaN(result) ? 50 : Math.max(0, Math.min(100, result));
+    return isNaN(result) ? (fallback === undefined ? 50 : fallback) : result;
   }
 
-  function applyImage(image, x, y) {
-    var moveX = ((50 - x) / 100) * image.clientWidth * 0.8;
-    var moveY = ((50 - y) / 100) * image.clientHeight * 0.8;
-    image.style.transform = "translate(" + moveX + "px, " + moveY + "px) scale(1.6)";
+  function bounded(value, low, high) {
+    return Math.max(low, Math.min(high, value));
+  }
+
+  function selectedKind(slide) {
+    if (targetControl.value === "recognition" && slide.dataset.hasWorkPhoto === "true") return "recognition";
+    return slide.dataset.photoKind;
+  }
+
+  function coords(slide, kind) {
+    var work = kind === "recognition";
+    return {
+      x: number(work ? slide.dataset.workPhotoX : slide.dataset.photoX),
+      y: number(work ? slide.dataset.workPhotoY : slide.dataset.photoY),
+      zoom: number(work ? slide.dataset.workPhotoZoom : slide.dataset.photoZoom, 160)
+    };
+  }
+
+  function applyImage(image, x, y, zoom) {
+    var scale = zoom / 100;
+    var naturalWidth = image.naturalWidth || image.clientWidth || 1;
+    var naturalHeight = image.naturalHeight || image.clientHeight || 1;
+    var coverScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
+    var overflowX = Math.max(0, naturalWidth * coverScale * scale - image.clientWidth);
+    var overflowY = Math.max(0, naturalHeight * coverScale * scale - image.clientHeight);
+    var moveX = ((50 - x) / 100) * overflowX;
+    var moveY = ((50 - y) / 100) * overflowY;
+    image.style.transform = "translate(" + moveX + "px, " + moveY + "px) scale(" + scale + ")";
     image.style.objectPosition = x + "% " + y + "%";
     image.draggable = false;
     image.style.touchAction = "none";
     image.ondragstart = function () { return false; };
+    if (!image.dataset.zoomLoadBound) {
+      image.dataset.zoomLoadBound = "true";
+      image.addEventListener("load", function () {
+        var slide = image.closest("[data-slide]");
+        if (slide) paint(slide);
+      }, { once: true });
+    }
   }
 
   function paint(slide) {
-    var x = number(slide.dataset.photoX);
-    var y = number(slide.dataset.photoY);
-    var workX = number(slide.dataset.workPhotoX);
-    var workY = number(slide.dataset.workPhotoY);
+    var profile = coords(slide, "employee");
+    var work = coords(slide, "recognition");
     Array.prototype.forEach.call(slide.querySelectorAll(".portrait-image, .employee-photo img"), function (image) {
-      applyImage(image, x, y);
+      applyImage(image, profile.x, profile.y, profile.zoom);
     });
     Array.prototype.forEach.call(slide.querySelectorAll(".work-photo img"), function (image) {
-      applyImage(image, workX, workY);
+      applyImage(image, work.x, work.y, work.zoom);
     });
   }
 
+  function savePending(slide, kind) {
+    var work = kind === "recognition";
+    var values = coords(slide, kind);
+    var id = work ? slide.dataset.recognitionId : slide.dataset.photoId;
+    if (!id || !kind) return;
+    pending[kind + ":" + id] = { kind: kind, id: id, x: values.x, y: values.y, zoom: values.zoom };
+    status.textContent = "Unsaved photo adjustments";
+  }
+
   function setPosition(slide, kind, x, y) {
-    x = Math.round(Math.max(0, Math.min(100, x)));
-    y = Math.round(Math.max(0, Math.min(100, y)));
-    var isWorkPhoto = kind === "recognition";
-    var prefix = isWorkPhoto ? "workPhoto" : "photo";
+    x = Math.round(bounded(x, 0, 100));
+    y = Math.round(bounded(y, 0, 100));
+    var work = kind === "recognition";
+    var prefix = work ? "workPhoto" : "photo";
     slide.dataset[prefix + "X"] = x;
     slide.dataset[prefix + "Y"] = y;
     paint(slide);
-    var id = isWorkPhoto ? slide.dataset.recognitionId : slide.dataset.photoId;
-    if (!id || !kind) return;
-    pending[kind + ":" + id] = { kind: kind, id: id, x: x, y: y };
-    status.textContent = "Unsaved alignment";
-    if (slide === slides[active] && !isWorkPhoto) {
+    savePending(slide, kind);
+    if (slide === slides[active] && kind === selectedKind(slide)) {
       xControl.value = x;
       yControl.value = y;
     }
+  }
+
+  function setZoom(slide, kind, zoom) {
+    zoom = Math.round(bounded(zoom, 100, 300));
+    var work = kind === "recognition";
+    slide.dataset[work ? "workPhotoZoom" : "photoZoom"] = zoom;
+    paint(slide);
+    savePending(slide, kind);
+    if (slide === slides[active] && kind === selectedKind(slide)) zoomLevel.textContent = zoom + "%";
+  }
+
+  function updateControls() {
+    var slide = slides[active];
+    if (!slide) return;
+    var hasWork = slide.dataset.hasWorkPhoto === "true";
+    targetControl.querySelector('option[value="recognition"]').hidden = !hasWork;
+    if (!hasWork) targetControl.value = "employee";
+    var values = coords(slide, selectedKind(slide));
+    xControl.value = values.x;
+    yControl.value = values.y;
+    zoomLevel.textContent = values.zoom + "%";
   }
 
   function show(index) {
@@ -65,8 +123,8 @@
       slide.classList.toggle("current", i === active);
     });
     counter.textContent = (active + 1) + " / " + slides.length;
-    xControl.value = number(slides[active].dataset.photoX);
-    yControl.value = number(slides[active].dataset.photoY);
+    targetControl.value = "employee";
+    updateControls();
   }
 
   slides.forEach(function (slide) {
@@ -81,17 +139,20 @@
       if (!kind) return;
       event.preventDefault();
       window.clearInterval(rotation);
+      var current = coords(slide, kind);
+      var naturalWidth = image.naturalWidth || image.clientWidth || 1;
+      var naturalHeight = image.naturalHeight || image.clientHeight || 1;
+      var naturalScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
+      var zoomScale = current.zoom / 100;
       dragging = {
         slide: slide,
-        image: image,
         kind: kind,
-        workPhoto: workPhoto,
         startX: event.clientX,
         startY: event.clientY,
-        x: number(workPhoto ? slide.dataset.workPhotoX : slide.dataset.photoX),
-        y: number(workPhoto ? slide.dataset.workPhotoY : slide.dataset.photoY),
-        rangeX: Math.max(image.clientWidth * 0.8, 1),
-        rangeY: Math.max(image.clientHeight * 0.8, 1)
+        x: current.x,
+        y: current.y,
+        rangeX: Math.max(naturalWidth * naturalScale * zoomScale - image.clientWidth, 1),
+        rangeY: Math.max(naturalHeight * naturalScale * zoomScale - image.clientHeight, 1)
       };
       if (image.setPointerCapture) image.setPointerCapture(event.pointerId);
     });
@@ -112,11 +173,22 @@
   function adjustFromSliders() {
     window.clearInterval(rotation);
     var slide = slides[active];
-    if (slide.dataset.photoKind) setPosition(slide, slide.dataset.photoKind, number(xControl.value), number(yControl.value));
+    setPosition(slide, selectedKind(slide), number(xControl.value), number(yControl.value));
   }
 
   xControl.addEventListener("input", adjustFromSliders);
   yControl.addEventListener("input", adjustFromSliders);
+  targetControl.addEventListener("change", updateControls);
+  document.getElementById("zoom-out").addEventListener("click", function () {
+    var slide = slides[active];
+    var values = coords(slide, selectedKind(slide));
+    setZoom(slide, selectedKind(slide), values.zoom - 10);
+  });
+  document.getElementById("zoom-in").addEventListener("click", function () {
+    var slide = slides[active];
+    var values = coords(slide, selectedKind(slide));
+    setZoom(slide, selectedKind(slide), values.zoom + 10);
+  });
   document.getElementById("preview-prev").addEventListener("click", function () { window.clearInterval(rotation); show(active - 1); });
   document.getElementById("preview-next").addEventListener("click", function () { window.clearInterval(rotation); show(active + 1); });
   document.addEventListener("keydown", function (event) {
@@ -126,7 +198,7 @@
 
   document.getElementById("save-photo-alignment").addEventListener("click", function () {
     var updates = Object.keys(pending).map(function (key) { return pending[key]; });
-    if (!updates.length) { status.textContent = "No alignment changes"; return; }
+    if (!updates.length) { status.textContent = "No photo adjustments to save"; return; }
     var csrf = document.querySelector("#alignment-form [name=csrfmiddlewaretoken]").value;
     var body = new URLSearchParams();
     body.set("csrfmiddlewaretoken", csrf);
@@ -141,9 +213,9 @@
       return response.json();
     }).then(function () {
       pending = {};
-      status.textContent = "Alignment saved";
+      status.textContent = "Photo adjustments saved";
     }).catch(function () {
-      status.textContent = "Could not save alignment";
+      status.textContent = "Could not save photo adjustments";
     });
   });
 
