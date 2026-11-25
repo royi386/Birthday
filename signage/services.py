@@ -202,7 +202,7 @@ def build_display_items(config=None, device=None, category_filter=None, preview=
             qs = qs.filter(starts_at__lte=now)
         qs = qs.order_by("-priority", "starts_at", "pk")
         for item in _is_configured_for(qs, "configurations", config):
-            buckets["announcement"].append(_base_item("announcement", item.title, item.description, _image(item.image), item.display_duration or schedules["announcement"].duration, item.priority))
+            buckets["announcement"].append(_base_item("announcement", item.title, item.description, "", item.display_duration or schedules["announcement"].duration, item.priority))
 
     for category, model in (("safety", SafetyMessage), ("general", GeneralMessage)):
         if category not in buckets: continue

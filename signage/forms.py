@@ -22,7 +22,7 @@ class AnnouncementForm(ImageValidationMixin, forms.ModelForm):
     display_duration = forms.IntegerField(min_value=1, max_value=28800, required=False, help_text="Seconds on screen; leave blank to use the category setting.", widget=forms.NumberInput(attrs={"min": 1, "max": 28800}))
     class Meta:
         model = Announcement
-        fields = ["title", "description", "image", "starts_at", "ends_at", "display_duration", "priority", "is_active", "configurations"]
+        fields = ["title", "description", "starts_at", "ends_at", "display_duration", "priority", "is_active", "configurations"]
         widgets = {"starts_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), "ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), "description": forms.Textarea(attrs={"rows": 4})}
         input_formats = {"starts_at": ["%Y-%m-%dT%H:%M"], "ends_at": ["%Y-%m-%dT%H:%M"]}
     def __init__(self, *args, **kwargs):
