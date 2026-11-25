@@ -38,6 +38,12 @@
   }
 
   function applyImage(image, x, y, zoom) {
+    if (image.classList.contains("portrait-image") && !image.parentElement.classList.contains("photo-window")) {
+      var window = document.createElement("div");
+      window.className = "photo-window";
+      image.parentNode.insertBefore(window, image);
+      window.appendChild(image);
+    }
     var scale = zoom / 100;
     var naturalWidth = image.naturalWidth || image.clientWidth || 1;
     var naturalHeight = image.naturalHeight || image.clientHeight || 1;

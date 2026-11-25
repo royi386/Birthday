@@ -138,3 +138,5 @@
 #stage[data-display-off="true"] .display-off-clock{display:flex}
 
 .display-off-clock[hidden]{display:none!important}
+
+.visual>.photo-window{position:absolute;inset:12px;border-radius:50%;overflow:hidden;display:block}.visual>.photo-window>.portrait-image{display:block;width:100%;height:100%;border-radius:0;transform-origin:center;background:#213b5b}@media(max-aspect-ratio:1/1){.visual>.photo-window{inset:8px}}
