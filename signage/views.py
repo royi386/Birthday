@@ -279,7 +279,9 @@ def public_display(request, device_id=None, category_filter=None):
         device = get_object_or_404(DisplayDevice, display_id=device_id, is_enabled=True)
         device.mark_seen()
     config = display_config(device)
-    payload = display_payload(config, device, category_filter)
+    preview_mode = request.resolver_match.url_name == "display_preview" and request.user.has_perm("signage.view_announcement")
+    payload = display_payload(config, device, category_filter, preview=preview_mode)
+    payload["preview_mode"] = preview_mode
     return render(request, "display/birthdays.html", payload)
 
 def display_feed(request, device_id=None, category_filter=None):
@@ -287,7 +289,8 @@ def display_feed(request, device_id=None, category_filter=None):
     if device_id:
         device = get_object_or_404(DisplayDevice, display_id=device_id, is_enabled=True)
         device.mark_seen()
-    response = JsonResponse(display_payload(display_config(device), device, category_filter), encoder=DjangoJSONEncoder)
+    preview_mode = request.GET.get("preview") == "1" and request.user.has_perm("signage.view_announcement")
+    response = JsonResponse(display_payload(display_config(device), device, category_filter, preview=preview_mode), encoder=DjangoJSONEncoder)
     response["Cache-Control"] = "no-store"
     return response
 

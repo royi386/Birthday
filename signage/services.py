@@ -148,7 +148,7 @@ def birthday_observances(on_date, config=None):
                     break
     return result
 
-def build_display_items(config=None, device=None, category_filter=None):
+def build_display_items(config=None, device=None, category_filter=None, preview=False):
     config = config or display_config(device)
     today = office_today(config)
     schedules = enabled_schedules()
@@ -197,7 +197,10 @@ def build_display_items(config=None, device=None, category_filter=None):
             buckets["recognition"].append(_base_item("recognition", item.title, item.message, photo["image"] or work_image, schedules["recognition"].duration, item.priority, name=employee.name if employee else "", designation=employee.designation if employee else "", section=employee.section if employee else "", person=employee is not None, employee_image=photo["image"], work_image=work_image, photo_kind=photo["photo_kind"], photo_id=photo["photo_id"], photo_position_x=photo["photo_position_x"], photo_position_y=photo["photo_position_y"], photo_zoom=photo["photo_zoom"], recognition_id=item.pk, work_photo_position_x=item.photo_position_x, work_photo_position_y=item.photo_position_y, work_photo_zoom=item.photo_zoom))
 
     if "announcement" in buckets:
-        qs = Announcement.objects.filter(is_active=True, starts_at__lte=now, ends_at__gt=now).order_by("-priority", "starts_at", "pk")
+        qs = Announcement.objects.filter(is_active=True, ends_at__gt=now)
+        if not preview:
+            qs = qs.filter(starts_at__lte=now)
+        qs = qs.order_by("-priority", "starts_at", "pk")
         for item in _is_configured_for(qs, "configurations", config):
             buckets["announcement"].append(_base_item("announcement", item.title, item.description, _image(item.image), item.display_duration or schedules["announcement"].duration, item.priority))
 
@@ -232,12 +235,12 @@ def build_display_items(config=None, device=None, category_filter=None):
             if buckets[name]: items.append(buckets[name].pop(0))
     return items
 
-def display_payload(config=None, device=None, category_filter=None):
+def display_payload(config=None, device=None, category_filter=None, preview=False):
     config = config or display_config(device)
     today = office_today(config)
-    items = build_display_items(config, device, category_filter)
+    items = build_display_items(config, device, category_filter, preview=preview)
     if category_filter == "birthday" and not any(item["category"] == "birthday" for item in items):
-        items = build_display_items(config, device)
+        items = build_display_items(config, device, preview=preview)
     for index, item in enumerate(items):
         item["key"] = f"{item['category']}:{index}"
     date_formats = {"weekday": "%A, %d %B %Y", "short": "%d/%m/%Y", "long": "%B %d, %Y"}

@@ -13,7 +13,7 @@ var stage=document.getElementById('stage');
 var container=document.getElementById('slides');
 var dateNode=document.getElementById('display-date');
 var offline=document.getElementById('offline');
-var feedUrl='{% if request.resolver_match.kwargs.device_id %}{% url "display_device_feed" request.resolver_match.kwargs.device_id %}{% else %}{% url "display_feed" %}{% endif %}';
+var feedUrl='{% if request.resolver_match.kwargs.device_id %}{% url "display_device_feed" request.resolver_match.kwargs.device_id %}{% else %}{% url "display_feed" %}{% endif %}{% if preview_mode %}?preview=1{% endif %}';
 var birthdayArtUrl='{% static 'birthday-art.svg' %}';
 var anniversaryArtUrl='{% static 'anniversary-art.svg' %}';
 var slides=[];
