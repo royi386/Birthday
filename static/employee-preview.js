@@ -5,8 +5,6 @@
   var slides = Array.prototype.slice.call(document.querySelectorAll("[data-slide]"));
   var counter = document.getElementById("preview-count");
   var status = document.getElementById("alignment-status");
-  var xControl = document.getElementById("align-x");
-  var yControl = document.getElementById("align-y");
   var zoomLevel = document.getElementById("zoom-level");
   var targetControl = document.getElementById("adjust-target");
   var pending = {};
@@ -55,6 +53,7 @@
     image.style.transform = "translate(" + moveX + "px, " + moveY + "px) scale(" + scale + ")";
     image.style.objectPosition = x + "% " + y + "%";
     image.draggable = false;
+    image.style.pointerEvents = "none";
     image.style.touchAction = "none";
     image.ondragstart = function () { return false; };
     if (!image.dataset.zoomLoadBound) {
@@ -95,10 +94,6 @@
     slide.dataset[prefix + "Y"] = y;
     paint(slide);
     savePending(slide, kind);
-    if (slide === slides[active] && kind === selectedKind(slide)) {
-      xControl.value = x;
-      yControl.value = y;
-    }
   }
 
   function setZoom(slide, kind, zoom) {
@@ -117,8 +112,6 @@
     targetControl.querySelector('option[value="recognition"]').hidden = !hasWork;
     if (!hasWork) targetControl.value = "employee";
     var values = coords(slide, selectedKind(slide));
-    xControl.value = values.x;
-    yControl.value = values.y;
     zoomLevel.textContent = values.zoom + "%";
   }
 
@@ -133,38 +126,48 @@
     updateControls();
   }
 
-  slides.forEach(function (slide) {
-    paint(slide);
-    slide.addEventListener("pointerdown", function (event) {
-      var image = event.target.closest("img");
-      if (!image) return;
-      var workPhoto = !!image.closest(".work-photo");
-      var employeePhoto = !!image.closest(".employee-photo") || image.classList.contains("portrait-image");
-      if (!workPhoto && !employeePhoto) return;
-      var kind = workPhoto ? "recognition" : slide.dataset.photoKind;
-      if (!kind) return;
-      event.preventDefault();
-      window.clearInterval(rotation);
-      var current = coords(slide, kind);
-      var naturalWidth = image.naturalWidth || image.clientWidth || 1;
-      var naturalHeight = image.naturalHeight || image.clientHeight || 1;
-      var naturalScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
-      var zoomScale = current.zoom / 100;
-      dragging = {
-        slide: slide,
-        kind: kind,
-        startX: event.clientX,
-        startY: event.clientY,
-        x: current.x,
-        y: current.y,
-        rangeX: Math.max(naturalWidth * naturalScale * zoomScale - image.clientWidth, 1),
-        rangeY: Math.max(naturalHeight * naturalScale * zoomScale - image.clientHeight, 1)
-      };
-      if (image.setPointerCapture) image.setPointerCapture(event.pointerId);
-    });
-  });
+  slides.forEach(paint);
 
-  document.addEventListener("pointermove", function (event) {
+  function startDrag(event) {
+    if ((event.type === "pointerdown" && event.pointerType === "mouse") || dragging) return;
+    var slide = event.target.closest("[data-slide]");
+    if (!slide || slide !== slides[active]) return;
+    var image = event.target.closest("img.portrait-image, .employee-photo img, .work-photo img");
+    if (!image) {
+      var photoFrame = event.target.closest(".visual, .employee-photo, .work-photo");
+      if (photoFrame) image = photoFrame.querySelector("img.portrait-image, .employee-photo img, .work-photo img");
+    }
+    if (!image) return;
+
+    var workPhoto = !!image.closest(".work-photo");
+    var kind = workPhoto ? "recognition" : slide.dataset.photoKind;
+    if (!kind) return;
+    targetControl.value = workPhoto ? "recognition" : "employee";
+    updateControls();
+    event.preventDefault();
+    window.clearInterval(rotation);
+
+    var current = coords(slide, kind);
+    var naturalWidth = image.naturalWidth || image.clientWidth || 1;
+    var naturalHeight = image.naturalHeight || image.clientHeight || 1;
+    var naturalScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
+    var zoomScale = current.zoom / 100;
+    dragging = {
+      slide: slide,
+      kind: kind,
+      startX: event.clientX,
+      startY: event.clientY,
+      x: current.x,
+      y: current.y,
+      rangeX: Math.max(naturalWidth * naturalScale * zoomScale - image.clientWidth, 1),
+      rangeY: Math.max(naturalHeight * naturalScale * zoomScale - image.clientHeight, 1)
+    };
+  }
+
+  document.addEventListener("pointerdown", startDrag);
+  document.addEventListener("mousedown", startDrag);
+
+  function movePhoto(event) {
     if (!dragging) return;
     setPosition(
       dragging.slide,
@@ -172,18 +175,17 @@
       dragging.x - ((event.clientX - dragging.startX) / dragging.rangeX) * 100,
       dragging.y - ((event.clientY - dragging.startY) / dragging.rangeY) * 100
     );
-  });
-  document.addEventListener("pointerup", function () { dragging = null; });
-  document.addEventListener("pointercancel", function () { dragging = null; });
-
-  function adjustFromSliders() {
-    window.clearInterval(rotation);
-    var slide = slides[active];
-    setPosition(slide, selectedKind(slide), number(xControl.value), number(yControl.value));
   }
+  document.addEventListener("pointermove", function (event) {
+    if (event.pointerType !== "mouse") movePhoto(event);
+  });
+  document.addEventListener("mousemove", movePhoto);
+  document.addEventListener("pointerup", function (event) {
+    if (event.pointerType !== "mouse") dragging = null;
+  });
+  document.addEventListener("pointercancel", function () { dragging = null; });
+  document.addEventListener("mouseup", function () { dragging = null; });
 
-  xControl.addEventListener("input", adjustFromSliders);
-  yControl.addEventListener("input", adjustFromSliders);
   targetControl.addEventListener("change", updateControls);
   document.getElementById("zoom-out").addEventListener("click", function () {
     var slide = slides[active];
