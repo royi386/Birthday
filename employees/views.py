@@ -44,8 +44,11 @@ def employee_edit(request, pk=None):
     employee = get_object_or_404(Employee, pk=pk) if pk else None
     form = EmployeeForm(request.POST or None, request.FILES or None, instance=employee)
     if request.method == "POST" and form.is_valid():
-        saved = form.save(); AuditLog.objects.create(actor=request.user, action="update" if employee else "create", target=str(saved), summary=f"Employee {'updated' if employee else 'created'}: {saved.name} ({saved.employee_id})"); messages.success(request, "Employee saved."); return redirect("employee_list")
-    return render(request, "employees/form.html", {"form": form, "employee": employee})
+        saved = form.save(); AuditLog.objects.create(actor=request.user, action="update" if employee else "create", target=str(saved), summary=f"Employee {'updated' if employee else 'created'}: {saved.name} ({saved.employee_id})")
+        response = redirect("employee_edit", pk=saved.pk)
+        response["Location"] += "?updated=1"
+        return response
+    return render(request, "employees/form.html", {"form": form, "employee": employee, "updated": request.GET.get("updated") == "1"})
 
 @login_required
 @permission_required("employees.view_employee", raise_exception=True)

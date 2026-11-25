@@ -11,6 +11,7 @@
 </div>{% for error in form.delete_gallery_photos.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</fieldset>
 {% endif %}
 <div class="form-grid">{% for field in form %}{% if field.name != 'delete_gallery_photos' %}<label class="field {% if field.name == 'is_active' %}check-field{% endif %}"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>{% endif %}{% endfor %}</div>
-<div class="form-actions"><a href="{% url 'employee_list' %}" class="button secondary">Cancel</a><button class="button primary">Save employee</button></div>
+<div class="form-actions"><a href="{% url 'employee_list' %}" class="button secondary">Close</a><button class="button primary" type="submit">Apply</button></div>
 </form>
+{% if updated %}<dialog class="employee-updated-dialog" id="employee-updated-dialog"><p>Updated</p><button class="button primary" type="button" onclick="document.getElementById('employee-updated-dialog').close()">OK</button></dialog><style>.employee-updated-dialog{border:0;border-radius:12px;padding:24px 30px;min-width:260px;box-shadow:0 20px 70px #10213c55;text-align:center;color:#172b46}.employee-updated-dialog::backdrop{background:#081a34aa}.employee-updated-dialog p{font-size:18px;font-weight:700;margin:0 0 20px}</style><script>document.getElementById('employee-updated-dialog').showModal();</script>{% endif %}
 {% endblock %}

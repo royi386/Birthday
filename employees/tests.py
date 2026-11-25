@@ -70,6 +70,22 @@ class EmployeeAdminFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(EmployeeForm().fields["section"].label, "Section")
 
+    def test_employee_apply_saves_and_keeps_edit_page_open_with_updated_popup(self):
+        self.allow("change_employee")
+        employee = Employee.objects.create(employee_id="APPLY1", name="Before", date_of_birth=date(1990, 1, 1))
+        response = self.client.post(reverse("employee_edit", args=[employee.pk]), {
+            "employee_id": "APPLY1", "name": "After", "designation": "", "section": "",
+            "date_of_birth": "1990-01-01", "date_of_joining": "", "is_active": "on",
+        })
+        self.assertRedirects(response, reverse("employee_edit", args=[employee.pk]) + "?updated=1")
+        employee.refresh_from_db()
+        self.assertEqual(employee.name, "After")
+        page = self.client.get(response.url)
+        self.assertContains(page, 'id="employee-updated-dialog"')
+        self.assertContains(page, "Updated")
+        self.assertContains(page, ">Apply</button>")
+        self.assertContains(page, ">Close</a>")
+
     def test_employee_preview_exposes_zoom_controls_and_saves_zoom(self):
         employee = Employee.objects.create(employee_id="ZOOM1", name="Zoom Person", date_of_birth=date(1990, 1, 1))
         self.allow("view_employee")
