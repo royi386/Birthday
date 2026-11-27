@@ -98,6 +98,15 @@ class EmployeeAdminFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         employee.refresh_from_db()
         self.assertEqual((employee.photo_position_x, employee.photo_position_y, employee.photo_zoom), (63, 38, 210))
+        fit_response = self.client.post(reverse("employee_photo_alignment", args=[employee.pk]), {"alignments": '[{"kind":"employee","id":%d,"x":50,"y":50,"zoom":60}]' % employee.pk})
+        self.assertEqual(fit_response.status_code, 200)
+        employee.refresh_from_db()
+        self.assertEqual(employee.photo_zoom, 60)
+        recognition = Recognition.objects.create(employee=employee, title="Zoom test", message="Test", starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31))
+        work_fit_response = self.client.post(reverse("employee_photo_alignment", args=[employee.pk]), {"alignments": '[{"kind":"recognition","id":%d,"x":50,"y":50,"zoom":60}]' % recognition.pk})
+        self.assertEqual(work_fit_response.status_code, 200)
+        recognition.refresh_from_db()
+        self.assertEqual(recognition.photo_zoom, 60)
 
     def test_employee_recognition_preview_renders_only_profile_and_recognition_photos(self):
         from PIL import Image

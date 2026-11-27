@@ -95,7 +95,7 @@ def employee_photo_alignment(request, pk):
             else:
                 target = get_object_or_404(Recognition, pk=photo_id, employee=employee)
             zoom = int(update.get("zoom", target.photo_zoom))
-            if not 100 <= zoom <= 300: raise ValueError
+            if not 25 <= zoom <= 300: raise ValueError
             target.photo_position_x, target.photo_position_y = x, y
             target.photo_zoom = zoom
             target.save(update_fields=["photo_position_x", "photo_position_y", "photo_zoom"])

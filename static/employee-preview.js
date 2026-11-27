@@ -35,23 +35,30 @@
     };
   }
 
-  function applyImage(image, x, y, zoom) {
+  function applyImage(image, x, y, zoom, fitPortrait) {
     if (image.classList.contains("portrait-image") && !image.parentElement.classList.contains("photo-window")) {
       var window = document.createElement("div");
       window.className = "photo-window";
       image.parentNode.insertBefore(window, image);
       window.appendChild(image);
     }
-    var scale = zoom / 100;
+    var zoomScale = zoom / 100;
     var naturalWidth = image.naturalWidth || image.clientWidth || 1;
     var naturalHeight = image.naturalHeight || image.clientHeight || 1;
-    var coverScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
-    var overflowX = Math.max(0, naturalWidth * coverScale * scale - image.clientWidth);
-    var overflowY = Math.max(0, naturalHeight * coverScale * scale - image.clientHeight);
+    var frameWidth = image.clientWidth || 1;
+    var frameHeight = image.clientHeight || 1;
+    var coverScale = Math.max(frameWidth / naturalWidth, frameHeight / naturalHeight);
+    var containScale = Math.min(frameWidth / naturalWidth, frameHeight / naturalHeight);
+    var scale = zoomScale * (fitPortrait ? coverScale / containScale : 1);
+    var renderedScale = containScale * scale;
+    var overflowX = Math.max(0, naturalWidth * renderedScale - frameWidth);
+    var overflowY = Math.max(0, naturalHeight * renderedScale - frameHeight);
     var moveX = ((50 - x) / 100) * overflowX;
     var moveY = ((50 - y) / 100) * overflowY;
     image.style.transform = "translate(" + moveX + "px, " + moveY + "px) scale(" + scale + ")";
-    image.style.objectPosition = x + "% " + y + "%";
+    image.style.objectFit = "contain";
+    image.style.objectPosition = fitPortrait ? "50% 50%" : x + "% " + y + "%";
+    if (fitPortrait) image.style.background = "transparent";
     image.draggable = false;
     image.style.pointerEvents = "none";
     image.style.touchAction = "none";
@@ -69,10 +76,10 @@
     var profile = coords(slide, "employee");
     var work = coords(slide, "recognition");
     Array.prototype.forEach.call(slide.querySelectorAll(".portrait-image, .employee-photo img"), function (image) {
-      applyImage(image, profile.x, profile.y, profile.zoom);
+      applyImage(image, profile.x, profile.y, profile.zoom, true);
     });
     Array.prototype.forEach.call(slide.querySelectorAll(".work-photo img"), function (image) {
-      applyImage(image, work.x, work.y, work.zoom);
+      applyImage(image, work.x, work.y, work.zoom, false);
     });
   }
 
@@ -97,7 +104,7 @@
   }
 
   function setZoom(slide, kind, zoom) {
-    zoom = Math.round(bounded(zoom, 100, 300));
+    zoom = Math.round(bounded(zoom, 25, 300));
     var work = kind === "recognition";
     slide.dataset[work ? "workPhotoZoom" : "photoZoom"] = zoom;
     paint(slide);
@@ -150,8 +157,13 @@
     var current = coords(slide, kind);
     var naturalWidth = image.naturalWidth || image.clientWidth || 1;
     var naturalHeight = image.naturalHeight || image.clientHeight || 1;
-    var naturalScale = Math.max(image.clientWidth / naturalWidth, image.clientHeight / naturalHeight);
+    var frameWidth = image.clientWidth || 1;
+    var frameHeight = image.clientHeight || 1;
+    var coverScale = Math.max(frameWidth / naturalWidth, frameHeight / naturalHeight);
+    var containScale = Math.min(frameWidth / naturalWidth, frameHeight / naturalHeight);
+    var fitPortrait = !workPhoto;
     var zoomScale = current.zoom / 100;
+    var renderedScale = containScale * zoomScale * (fitPortrait ? coverScale / containScale : 1);
     dragging = {
       slide: slide,
       kind: kind,
@@ -159,8 +171,8 @@
       startY: event.clientY,
       x: current.x,
       y: current.y,
-      rangeX: Math.max(naturalWidth * naturalScale * zoomScale - image.clientWidth, 1),
-      rangeY: Math.max(naturalHeight * naturalScale * zoomScale - image.clientHeight, 1)
+      rangeX: Math.max(naturalWidth * renderedScale - frameWidth, 1),
+      rangeY: Math.max(naturalHeight * renderedScale - frameHeight, 1)
     };
   }
 

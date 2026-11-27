@@ -26,7 +26,7 @@ class Recognition(models.Model):
     photo = models.ImageField(upload_to="recognition/", blank=True, validators=[IMAGE_VALIDATOR])
     photo_position_x = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
     photo_position_y = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(0), MaxValueValidator(100)])
-    photo_zoom = models.PositiveSmallIntegerField(default=100, validators=[MinValueValidator(100), MaxValueValidator(300)])
+    photo_zoom = models.PositiveSmallIntegerField(default=100, validators=[MinValueValidator(25), MaxValueValidator(300)])
     starts_on = models.DateField(db_index=True)
     ends_on = models.DateField(db_index=True)
     priority = models.PositiveSmallIntegerField(default=50, validators=[MinValueValidator(1), MaxValueValidator(100)])
